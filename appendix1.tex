@@ -1,0 +1,133 @@
+\chapter{Appendix} \label{ap1:Lorem}
+
+\begin{lstlisting}[
+    caption={Avro Schema for records sent to the data-engineering-controller topic}, 
+    label={appendix:avro_schema}
+]
+{
+    "name": "DEControllerSchema",
+    "type": "array",
+    "items": {
+        "name": "TopicPartition",
+        "type": "record",
+        "fields": [
+            {"name": "topic_name", "type": "string"},
+            {"name": "bq_table", "type": "string"},
+            {
+                "name": "topic_class", 
+                "type": {
+                    "name": "topic_class",
+                    "type": "record",
+                    "fields": [
+                        {"name": "module_path", "type": "string"},
+                        {"name": "class_name", "type": "string"},
+                    ]
+                }
+            },
+            {
+                "name": "partitions", 
+                "type": {
+                    "type": "array", 
+                    "items": {
+                        "name": "partition",
+                        "type": "int"
+                    }
+                }
+            },
+            {
+                "name": "ignore_events", 
+                "type": {
+                    "type": "array", 
+                    "items": {
+                        "name": "event_type",
+                        "type": "string"
+                    }
+                }
+            },
+        ]
+    }
+}
+\end{lstlisting}
+
+\begin{lstlisting}[
+    caption={Template Persistent Volume claim}, 
+    label={appendix:template-pvc}
+]
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: de-consumer-1-volume
+  namespace: data-engineering-dev
+  labels:
+    consumerGroup: de-consumer-group
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: de-consumer-volume
+  resources:
+    requests:
+      storage: 500Mi
+\end{lstlisting}
+
+\begin{lstlisting}[
+    caption={Template consumer deployment}, 
+    label={appendix:template-consumer}
+]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: de-consumer-1
+  namespace: data-engineering-dev
+  labels: 
+    consumerType: consumer-autoscaler
+    consumerGroup: de-consumer-group
+spec:
+  replicas: 1
+  strategy: 
+    type: Recreate
+  selector:
+    matchLabels:
+      app: de-consumer
+  template:
+    metadata:
+      labels:
+        app: de-consumer
+    spec:
+      containers:
+        - name: consumer-capacity
+          image: ...
+          imagePullPolicy: Always
+          resources:
+            requests: 
+              memory: "0.4Gi"
+              cpu: "500m"
+            limits: 
+              memory: "0.6Gi"
+              cpu: "500m"
+          env: 
+            - name: CONSUME_ENV
+              value: "uat"
+            - name: WRITE_ENV
+              value: "uat"
+            - name: GROUP_ID
+              value: "data-engineering-autoscaler"
+            - name: BATCH_BYTES
+              value: "5000000"
+            - name: WAIT_TIME_SECS
+              value: "1"
+          volumeMounts:
+            - name: podinfo
+              mountPath: /etc/podinfo
+            - name: podpvc
+              mountPath: /usr/src/data
+      volumes:
+        - name: podinfo
+          downwardAPI:
+            items:
+              - path: "pod_name"
+                fieldRef:
+                  fieldPath: metadata.name
+        - name: podpvc
+          persistentVolumeClaim:
+            claimName: de-consumer-1-volume
+\end{lstlisting}

@@ -1,0 +1,39 @@
+\chapter{Conclusion and Future Work} \label{chap:conclusions}
+
+\section{Summary and Discussion of Thesis Results}
+
+The work developed in this thesis challenges the existing methods used to scale a Kafka consumer group and how the load should be distributed between the various consumers.
+
+The goal was to deterministically solve the autoscaling problem related to a group of consumers, which in turn was modeled as a Bin Packing Problem where the items that have to be assigned a bin can change in size over time. Due to this particular feature, a new metric was introduced to determine a rebalance score (Rscore) for a given iteration. 
+
+The Rscore introduced a new concern when executing an algorithm to solve the bin packing problem, and for this reason 4 new algorithms were presented to heuristically solve the BPP, while at the same time taking into consideration how the items (partitions) were rebalanced to different bins (consumers). Three of the presented algorithms (MWF, MBFP and MBF), proved themselves to be a competitive alternative, consistently belonging to the pareto front \ref{fig:pareto_front} when comparing the multi-variate optimization with regards to the number of consumers and the Rscore.
+
+To further consolidate the BPP Model, the consumer was tested in diverse conditions to determine whether a constant bin size model could be used for the scenario at hand. Provided the results in \ref{result:bin capacity}, the BPP was then modeled as its single bin size variant.
+
+The different parts in the system interacted with one another as expected to deliver an autoscaling consumer group capable of adapting depending on the current load of the system as shown in \ref{c4}.
+
+\section{Future Work}
+
+Given the multiple parts developed within this system, there is a lot of room for improvement. Most notably, due to the close relationship between the system and the Kubernetes cluster, the autoscaler could be wrapped as a Kubernetes Operator \cite{KuberenetesOperator} as is common with systems of this kind (\cite{Kubegres, PulumiOperator, KEDA}).
+
+\subsection{Monitor}
+
+To the best of my knowledge, for lack of a better metric being provided by the Kafka cluster, the value that was used to track the write speed of each partition was the number of bytes in each partition. For this reason, a process \ref{component:Monitor} was used to evaluate the speed of each partition by historically storing the amount of bytes in a partition at a certain timestamp.
+
+A clear disadvantage of using this component is the fact that if \lstinline[language=Python]{retention.ms != -1}, this means a record is deleted from its partition after \lstinline[language=Python]{retention.ms} which leads to a reduction in the amount of bytes in the partition. The monitor process (\ref{component:Monitor}) then erroneously evaluates a negative partition write speed. To circumvent this behaviour, either one of the following metrics provided by Kafka would suffice: The current write speed (bytes/s) per partition; A historic amount of bytes that have been written to a partition.
+
+Since the monitor process presents the write speed as the average data rate over the last 30 seconds, using a different strategy to evaluate the speed could lead to more robust measures.
+
+\subsection{Consumer}
+
+If the network is experiencing increased latency, the current implementation of the autoscaler does not account for changes in the size of the consumer capacity, therefore the controller assumes a maximum capacity of a consumer which is not accurate within this scenario. Metrics related to a consumer's performance provided by Kafka JMX metrics could be leveraged to obtain a more accurate dynamic representation of the consumer's current capacity. This could also lead to a variable bin size BPP.
+
+\subsection{Controller}
+
+Throughout this thesis, the controller process was presented with strict execution rules and actions to manage the Kafka consumer group. Evolving this component into a more abstract concept, could not only maintain its current functionalities, but it could also be used to more accurately solve load balancing within a consumer group without necessarily modeling the problem as a BPP. 
+
+In fact, the heuristic algorithms that make use of the worst fit rule when assigning partitions to consumers, are at the same time applying a load balancer rule between the available consumers.
+
+\section{Final Remarks}
+
+In spite of the fact that, as a whole, the thesis presents quite a specific use case, individually several of Kafka's functionalities are challenged and tested alternatives are also provided which can be used as a foundation so as to improve the way in which a consumer's load is modeled, and the manner in which the load is distributed between the elements of a consumer group.

@@ -1,0 +1,46 @@
+\chapter{Introduction} \label{chap:intro}
+
+HUUB is a company that aims to revolutionize the supply chain of fashion companies with a platform (Spoke) that delivers end-to-end logistic support, to any company that wishes to have a chance to grow globally.
+
+As expected, providing this kind of solution to an unlimited amount of companies, will imply a data-driven solution, to unyielding real-time and scalability constraints. As such, the company is transitioning from a monolithic design into a microservices approach which responds better to the fast growing needs of the company.
+
+Currently, 75\% of production data is still gathered through their legacy service, whereas the remaining data is already fetched using their 5 microservices. The distributed systems communicate with one another using the Kafka messaging system, a highly scalable and available, event-driven platform that simplifies decoupling services when correctly applied.
+
+To provide the information required for an in-depth analysis on the logistic process of an individual company, the Data Engineering team is responsible for Extracting, Transforming and Loading (ETL) all the relevant data, into a "single source of truth" data warehouse.
+
+It is within this department that the thesis was developed, and it entails 3 important component's of HUUB's technical architecture: Kafka Cluster; Data-Engineering Consumer Clients; Google BigQuery (GBQ).
+
+Currently the data-engineering team uses a single consumer client to consume messages from a Kafka topic with the sole purpose of populating a table in GBQ. There are 5 topics of interest for the data engineering team, and as such, there are only 5 consumers running on a single VM hosted by AWS.
+
+This is the architecture that will be thoroughly analyzed throughout the thesis with recommended changes to certain components' process and the actual architecture itself to provide a scalable solution to the data-engineering team.
+
+\section{Motivation} \label{sec:motivation}
+
+As the company grows and more fashion brands look for global reach through HUUB, more data flows through the messaging systems, making it harder to comply with the near real-time requirements HUUB aims to provide. It is also the case that the peaks and valleys related to the quantity of data being produced grow farther apart, making it harder to justify a static solution.
+
+Therefore, the Data Engineering team decided that the best approach would be a dynamic system, capable of evaluating the state of data production and consumption, scaling its services as needed, always taking into account the expenses.
+
+To summarize, the proposed solution must:
+\begin{itemize}
+    \item Consume data in near real-time, regardless of the amount of data being produced;
+    \item Be reliable;
+    \item Be monitored;
+    \item Comply with Microservices;
+    \item Be cost efficient.
+\end{itemize}
+
+
+\section{Contributions and Structure} \label{sec:contributions}
+
+This thesis aims to provide a comprehensive review of the technologies and architectural patterns referenced throughout the thesis. The work related with the objective's specified by the data-engineering team envolves a comprehensive analysis of the whole pipeline from the Kafka Cluster to the insertion of the records into GBQ. As such, the following topics are described in detail in the literature review, to provide the reader with the required knowledge of what will be referenced throughout the thesis:
+\begin{itemize}
+    \item Microservices
+    \item Distributed Messaging Systems
+    \item Containers
+    \item Deploying Containerized Applications
+    \item Optimization Problems and its applications
+\end{itemize}
+
+Posterior to introducing the necessary background, the methods combine all of the previous topics, into a single solution to solve a common problem in distributed systems which use a technical architecture similar to the one of HUUB's.
+
+The results of the proposed solution is then presented and compared to the previous implementation at the company, followed by the conclusions.
