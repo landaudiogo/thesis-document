@@ -1,0 +1,561 @@
+\chapter{Literature Review} \label{chap:literature review}
+
+This chapter has the sole purpose of introducing and explaining the necessary information for a reader to be within context of the problem at hand.
+
+The first section is an explanation of the architecture, followed by the communication methods between components, service deployment and lastly optimization methods.
+
+\section{Monolith Architecture}
+
+Within this type of architecture, all application concerns are contained in a single deployment.
+
+It is usually the first approach to most product development due to its simplicity, but it is hard to ignore its disadvantages as it can easily become the bottleneck of any system.
+
+When developing for this kind of architecture, a lot more care is given to how each part of the system communicates with one another, as communication is achieved through method or function calls. 
+
+This leads to very tight coupling between different application components, which inevitably provides a lot of friction to updating the codebase due to the high risk of it disabling the service entirely.
+
+Like with most applications, with every new feature, the monolith grows, also increasing the computing resources required to run a single instance. In times of traffic peak, it is common for an application to scale its service allowing for response speed to remain approximately constant at all times. 
+
+The bigger the deployment, the longer it takes to make a new instance available and the more computing resources are used, making it more expensive to provide availability in times of high traffic.
+
+With this type of system, technological choices have a huge impact on the final product, and have to be thoroughly planned in the beginning to guarantee that the system fulfills its requirements. It also makes it harder to adopt a different technology further into the development as the technological cost and time invested would be too much to even consider this option. This point alone, makes it hard to accept this kind of architecture, especially considering the frequency of new advances in this field, and it is only natural that a new approach to system architecture were developed.
+
+\section{Microservices}
+
+Although there is no formal definition, \cite[Chapter~1]{newman2015building} states that ``Microservices are small, autonomous services that work together.''
+
+Small is of course a subjective measure, but in fact there is no "theoretical" boundary on this quantity. It depends on the context of the application and the business, but considering the size of these microservices, it is only logical that each of the small services follows some kind of team structure allowing for parallel development, without any real coupling between the services. 
+
+It is also stated in \cite{MartinFowlerMicroservices} that Microservices are built around different ``business capabilities'' which are ``independently deployable by fully automated deployment machinery''. In other words, each microservice can be deployed on its own, hence scaling services and reliability is "included" with this kind of architecture. 
+
+This makes updating code very low risk. As an example, in the scenario there is some flaw in a new deployment sent to production, it will only affect that microservice in particular, making it easier not only to track where the fault lies, but also guaranteeing that the remaining services are not made fully unavailable.
+
+On the topic of scaling, with smaller decoupled services, only the service that requires scaling is in fact replicated, which leads to less computer resources utilization thanks to the reduced overhead of the service, resulting in a considerate cost reduction, and faster response to scaling needs.
+
+With the possibility of running decoupled services interacting through lightweight network calls, each microservice can be programmed in whichever programming language and run the datastore that fits its needs best. The reduced size of each service, also makes technological changes and code refactoring a lot simpler, and can be done in a lot less time, compared to its counterpart.
+
+With smaller services, it is only logical that team separation follows the lines that separate each microservice (business capabilities), leading to more diverse qualities within a single team/service, as mentioned in \cite{MartinFowlerMicroservices}. When a new feature is to be developed for the service, the requirements rarely cross between teams making it faster to develop a single feature.
+
+It is also worth mentioning that the separation between each service allows several representations of the same data in different ways depending on the service that is storing it. The benefits of this approach is not only in a projection perspective where there isn't a need to over-engineer how the data will be stored for future purposes that still are not implemented, but it also helps model the world in the way that fits each service best.
+
+This of course does not come without hardships, as maintaining data consistency between each service is one of the hardest tasks in this distributed data storage approach. On this note, we introduce the next section, which attempts to tackle this issue.
+
+
+\section{Distributed Messaging Systems}\label{sec:DMS}
+
+With a microservices approach, rarely do two components communicate with one another directly or through synchronous communication. If this were the case, the communication would become too convoluted with the increase of instances and services, becoming a source of coupling. 
+
+As stated in \cite{sharvari2019study}, it is clear the market needs are pointing to a messaging system that has the following features:
+\begin{itemize}
+    \item Scalable - the system provides tools with which services can process a bigger load of messages in a time of intense volume of traffic;
+    \item Space decoupling – The receiving and sending entity do not need to “know” each other;
+    \item Reliable – The system can guarantee that the receiver has received the message;
+    \item Asynchronous  – The sender and receiver do not have to be active at the same time, and as soon as a message is produced the producer can go back to its tasks;
+\end{itemize}
+
+
+To enable decoupling between services, most messaging systems leverage the use of a broker, providing with the space and time decoupling, with the added benefit of it also being asynchronous, in the sense that after the broker acknowledges the reception of the message sent by the producer, the producer does not need to worry about its consumption allowing for it to go back to the tasks it has at hand. 
+
+There are two main approaches at solving this problem, event and message driven paradigms.
+
+\subsection{Message Driven}
+
+This paradigm makes use of message queues where producers send the data for it to be consumed by a single consumer in the same order it was appended to the queue. When data is produced, in case there isn’t a consumer interacting with the queue, the message is stored until read. 
+
+RabbitMQ is a well known platform commonly used for this purpose. All the previous features are provided, and on the note of scalability, a given service can connect to a queue with one or more consumers to increase consumption rate. This is done using round-robin dispatching \cite{RabbitMQscale} which simplifies parallelizing work between instances, always guaranteeing that each message in a queue will be read by a single consumer.
+
+\subsection{Event Driven (Publish/Subscribe)}
+
+Messaging system which allows a producer to send a message to a certain category, which can be posteriorly retrieved by multiple consumers which are subscribed to the same category. This architecture not only decouples the services, it also allows many-to-many communication.
+
+A common application for the event driven paradigm is for event sourcing. This is the pattern of storing any event that changes a systems state via an event object, onto an event log that preserves the sequence in which the events occurred. This was presented as an alternative to storing structures that model the state of the world, into storing events that lead to the current state of the world \cite[Chapter~5]{nadareishvili2016microservice}.
+
+Comparing this scenario to the one of using a database, in the latter, every time the main database is updated, a second database recording the historic state has to be updated as well, storing the past states the system has been through. With event sourcing, when an event changes the state of the system, it is simply appended to the sequential event log, which in turn makes it less expensive to make operations of this type.
+
+For these reasons, HUUB opted for this kind of architecture for their system, resorting to Kafka as their messaging system. 
+
+\subsection{Kafka}
+
+Kafka functions as a distributed log running in multiple brokers that coordinate with each other to form a cluster.
+
+\subsubsection{Broker}
+
+A Kafka cluster is made up of one or more brokers, which function as servers where the messages can be published to, and consumed from.
+
+This is the entity each client has to connect to in order to interact with other services. After a client connects to a single broker, it will also be connected to the remaining elements of the cluster.
+
+\subsubsection{Topics and Partitions}
+
+When data is published, the producer has to specify to which topic the record goes to. 
+
+A topic contains several partitions, and each partition can be stored in different brokers. Message order is only guaranteed within a single partition, and to insert a record consistently to the same partition, the same key has to be provided when inserting the message. 
+
+This consistency is only guaranteed while the number of partitions remains constant. As soon as a partition is added or removed, a message with the same key might end up in a different partition, but order will be guaranteed while the structure of the topic remains the same.
+
+At the time of topic creation, there are three parameters that have to be provided: 
+\begin{enumerate}
+    \item \textbf{topic} - The name of the topic to create;
+    \item \textbf{partitions} - The amount of partitions the topic is subdivided in;
+    \item \textbf{replication-factor} - The amount of replicas of each partition to guarantee a reliable service.
+\end{enumerate}
+
+Although the first two parameters are self-explanatory, the third is one of the most important features to guarantee a reliable service to a producer. 
+
+Assuming the scenario of choosing the replication factor of 2, this means that for each partition in the created topic, there will be 2 partitions that represent the same log in different brokers. At any given time, there is only 1 partition leader (broker), which leaves the other partition trying to keep up with the main log. When a replica is up-to-date with the leader, it becomes an in-sync replica (ISR).
+
+
+In the scenario the partition leader fails unexpectedly, the partitions it is leading have to be reassigned a different leader. For each partition, the new partition leader will be one of the brokers that contains an in-sync replica of the same partition.
+
+\subsubsection{Producer}
+
+To publish data, producers have to specify one of the brokers from the cluster - which automatically connects it to all brokers in the cluster - and to which topic the record is to be sent.
+
+The partition that belongs to the partition leader is where the messages are appended and read. To guarantee a message is delivered safely to the cluster, a producer might want to wait for acknowledgement. This is one of the configurations that allows for reliability when adding a message to a topic \cite{KafkaProducer}. 
+
+There are 3 possible values for this configuration:
+\begin{itemize}
+    \item $acks=0$ - Producer does not wait for acknowledgement, making it an unreliable configuration;
+    \item $acks=1$ - Producer waits for acknowledgement from the partition leader;
+    \item $acks=all$ - Producer expects an acknowledgement from leader and all of its replicas.
+\end{itemize}
+
+After appending data to a log, it can no longer be changed (immutability).
+
+When producing a message, if the order of a group of messages is important, Kafka provides a feature that allows messages to be consumed in the same order as they were produced. This is done by setting the key of a record to the same value, as a hash function runs over the key, and the partition where the message goes to is consistently the same, as long as the number of partitions does not change. If the number of partitions changes, then it is no longer guaranteed that same key messages will end up in the same partition as prior to the parameter being changed, only guaranteeing same key messages go to the same log from the moment the configuration changes and until it is modified.
+
+To improve throughput when the volume of traffic increases, Kafka provides other configurations which allow a single producer to send messages in a batch, opposed to sending a message at a time. These configurations are:
+\begin{itemize}
+    \item \texttt{batch.size} - Before sending a single record to the topic, the producer batches the messages (by partition), and when it reaches the size defined by this parameter, it proceeds with appending the records to its respective partitions. 
+    \item \texttt{linger.ms} - How long the consumer waits before sending the messages it has already batched.
+\end{itemize}
+
+\subsubsection{Consumer Group and Consumer Clients}
+
+When connecting a consuming client to the messaging system, the topic(s) it wishes to subscribe to, the consumer group and at least one of the brokers from the cluster have to be provided (a connection to a single broker connects the consumer to all the other brokers in the cluster). 
+
+Messages are then read in order w.r.t a single partition, and in parallel w.r.t. multiple partitions.
+
+Each consumer from within a consumer group, reads from exclusive partitions. This means that two consumers belonging to the same consumer group cannot be responsible for reading messages from the same partition, which in turn implies that the parallelism Kafka provides, is through the partitions in a topic. The amount of active consumers a single consumer group can have is therefore limited to the number of partitions in a topic \cite{OreillyConsumer}. 
+
+In order to maintain a reliable consumption service, whenever a consumer successfully reads a message and commits its offset, kafka internally stores the offset in a topic with the name \texttt{\_\_consumer\_offset} \cite{KafkaConsumer}. 
+
+There is another important functionality of this internal topic, which is related to the consumer group management. For a group to know when to rebalance it is important for the system to monitor the state of each consumer in the group, and this is performed by a group coordinator. To elect a group coordinator, the consumer group's id is selected as the message key, which is then hashed into a partition of this internal topic. The partition leader of that partition becomes the group coordinator.
+
+For a consumer to remain a member of the group, it must periodically send heartbeats with a predefined interval to the coordinator. When the maximum amount of time without receiving a heartbeat is exceeded or the coordinator is notified of a consumer leaving the group, rebalancing is triggered, reassigning the partitions the consumer was responsible for to the remaining elements of its group.
+
+The same rebalancing is triggered when a consumer starts up and requests to join a group. Rebalancing is simply attempting to split the load as equally as possible between the active consumers in a group, which also means approximately assigning an equal amount of partitions to each consumer in the same group. 
+
+Depending on the chosen configuration for the parameter \texttt{auto.offset.reset}, when a consumer receives its assignment from the coordinator, if there are no committed offsets by the consumer group's id for the topic-partition pair, then this policy is selected to determine where to start consuming records from its partitions. If it is set to \texttt{earliest} it will start consuming from the first message in the partition, whereas set to \texttt{latest} it will start consuming from the last message appended to that partition's log.
+
+When data is consumed in batch, it can only be guaranteed that the data is read at least once. The reason why this is the case is due to the fact that if a consumer fails while processing the messages, before committing the offsets, the partition is reassigned and the same messages will be read again. 
+
+This implies the batch size is an important factor to take into consideration: the bigger the size, the more messages can be read more than once in cases of consumer failure.
+
+While rebalancing, it is important to note that the consumers are not capable of consuming data from the partitions being rebalanced, making it an expensive operation which is to be avoided. If a certain consumer stops unexpectedly, it is no longer consuming from its partitions, and the coordinator has to wait for as long as \texttt{session.timeout.ms} for it to trigger rebalancing. This is a configurable value, but there is of course a trade-off. The bigger the value set, the less rebalancing is performed, but it will also take the coordinator longer to determine whether a single consumer is unavailable before triggering a rebalance. 
+
+\section{Containers} \label{sec:COM}
+
+When internet services first started, it was common to have the services running on local hardware. To handle peak traffic, scaling was performed by purchasing more hardware, which would then become unused when the traffic was no longer as high \cite[Chapter~1]{smith2017docker}.
+
+Virtual Machines (VMs) became the next advance in this industry, and it allowed to use the resources of pieces of hardware more efficiently as multiple VMs could run on a single machine as long as there was space. This is when cloud service providers like Amazon, Google and Microsoft also started renting out VMs. In moments of peak traffic, a company could scale services in minutes, and there was no need to waste hardware resources with unused instances, therefore paying only for what is used.
+
+It became clear that Virtual Machines also came with disadvantages, as there was a considerable overhead of memory to support the operating system of this environment.
+
+Enter containers. Running instances could be done in a matter of seconds without the overhead of an operating system, which allows applications to run consistently in different environments as long as the containers are created resorting to the same image.
+
+As stated in \cite{DockerContainer}, an image is a bundle of code/software which contains all the dependencies and libraries a given instance might need to run reliably in different computing environments. Container images become containers on runtime.
+
+\subsection{Kubernetes} \label{subsec:kubernetes}
+
+Kubernetes works with a cluster of distributed nodes, that interact with one another to work as a single unit.
+
+This service allows for an automated distribution and scheduling of containerized application. The level of abstraction causes a deployment to have no ties to a specific machine.
+
+A kubernetes cluster is formed by 2 entities, the control plane, and nodes. The first is responsible for coordinating all activities in a cluster, such as scheduling, scaling and rolling out new updates of an application. The second, contains a process named kubelet, which manages the communication of the node with the control plane. There are additional tools like containerd or docker to allow the node to deploy containerized applications.
+
+``In practice, a node is simply a VM or a physical computer that serves as a worker machine in Kubernetes'' \cite{CreateKubeCluster}.
+
+As soon as the Kubernetes cluster is running, it is possible to deploy the containerized applications. This is performed by creating the Kubernetes Deployment configuration specifying the number of instances and the image(s) with which to create the instances, followed by sending it to the control plane. 
+
+At all times, there is a deployment controller that continuously monitors the instances. In the scenario the node running a given instance fails, the controller detects the failure and launches the same instance on another node that belongs to the cluster. This is a consequence of the control plane attempting to maintain the state of an application that was defined in the deployment configuration.
+
+Kubernetes offers a CLI, kubectl, which gives a user the possibility to communicate with the cluster locally. The communication is performed via the Kubernetes API, which is an API server located on the control plane. This server exposes an HTTP API, which allows differing entities to interact with it to query or even change API object's states \cite{KubernetesAPI}.
+
+The Pod is Kubernetes' atomic unit. When creating a deployment, it creates as many pods as specified in the \mintinline{sh}{replicas} value defined in the deployment configuration, which in turn holds the containers specified in the configuration as well under the \texttt{template} value. This is the template to be used when creating any pod that belongs to the deployment.
+
+\subsubsection{Autoscaling}
+
+As described in \cite{KubernetesAutoscaling}, the algorithm works in loop, constantly evalutaing the performance of the pods measuring the average CPU usage in the last minute. The control is performed by default every 30s, which can be modified by changing the value of:
+\begin{itemize}
+    \item \mintinline{sh}{--horizontal-pod-autoscaler-sync-period}.
+\end{itemize}
+
+The following equation determines the appropriate amount of pods for the average CPUUtilization to be below the target:
+\begin{equation}
+    numPods = ceil\bigg(\frac
+        {\sum_{p \in Deployment} CPUUtilization_p}
+        {Target}
+    \bigg)
+\end{equation}
+where $CPUUtilization_p$ is the average CPU utilization in the last minute of a pod $p$. 
+
+To reduce noise in the metrics, the autoscaler can only scale-up if there was no rescaling within the last 3 minutes. The same applies to scale-down but the waiting time is 5 minutes.
+
+Assuming a pod represents a Kafka consumer client, and a deployment a consumer group, to achieve maximum parallelism of consumption from a topic, the amount of pods in the deployment would be the same as the amount of partitions in the topic. Hence, when evaluating the performance of this deployment, specifically related to the usecase presented by the data-engineering team, where each consumer has to read messages from the topic and insert them into a GBQ table, what delays the message consumption from the topic, is the synchronous request made to BigQuery. Consequently, autoscaling cannot be performed on CPUUtilization, as it would not increase with the increase in lag of the current offset w.r.t. the last message inserted in the topic.
+
+Kubernetes Event Driven Autoscaling (KEDA), specifically provides a scaler which allows to increase the amount of consumers based on the average lag of a consumer group. Although this is definitely better than scaling based on the CPU usage, it still lacks granularity on evaluating the groups performance based on other metrics, providing as an example consumer group throughput and production throughput to the same topic. It also does not take into consideration the cost of releasing another instance, which will be one of the goals of the work developed throughout the thesis.
+
+\subsubsection{Kubernetes Operating Modes}
+
+When running Kubernetes, there are several alternatives. The first is to have the cluster run in bare metal. This is the option that allows most control over which type of node is added or removed from the cluster. 
+
+As soon as a node is manually added to the cluster, the control plane can start assigning deployment instances - or pods - to run in the node. When there is no longer any more space in the cluster to run other instances, more nodes have to be added to the cluster to allow the deployments to be correctly scheduled to maintain the state described in the deployment.
+
+With this type of configuration, the payment is usually associated with the nodes that are added to the cluster. This can represent renting out VMs, or it can also be the price of buying the actual physical hardware running the necessary software to be a part of the Kubernetes cluster.
+
+Another possibility, is to use some kind of cluster auto-management which is already included in a few cloud provider's Kubernetes Engine. Using as an example Google's Kubernetes Engine (GKE), there is a cluster mode of operation which is the autopilot, which manages the nodes within the cluster automatically without having to interfere manually with the cluster.
+
+This mode of operation allows the user to pay by pod instead of node \cite{GKEautopilot}, meaning that only the resources that are being used are being payed for, making it as efficient as it could be with regards to pricing. Autopilot allows a truly dynamic and hands-off experience when having to deal with dynamic scaling a certain deployment.
+
+
+\begin{comment}
+
+    \subsection{Deploying Containerized Applications on AWS}
+    
+    There are several possibilities to deploy a container in a cloud service provider. One of the options, is the native Elastic Container Service which is a powerful tool to easily deploy, manage and scale containerized applications, which also supports Docker containers. 
+    
+    Some important concepts are \cite{AmazonECSdocs}:
+    \begin{itemize}
+        \item task definition - Required to run Docker containers on ECS, this defines how the containers defined should run in its environment. Parameters defined in this file are: container image, CPU and memory to use with each task, networking, and others;
+        \item tasks - instances of a task definition;
+        \item services - Defines a state for a specified number of tasks. When a given task fails, then the service attempts to create a new task to maintain as many healthy tasks as specified in the service;
+        \item cluster - A logical grouping of tasks and services. These two entities run on machines that are registered to the cluster.
+    \end{itemize}
+    
+    This service also provides cluster autoscaling based on cluster usage.
+    
+    As an alternative, EKS is an integrated Kubernetes solution provided by AWS which provides a few more features compared to manually configuring a Kubernetes cluster. It is similar to ECS as it allows for dynamic autoscaling based on load and node health \cite{AmazonEKSdocs}. The remaining features of the service, are similar to what was explained in \ref{subsec:kubernetes}.
+    
+    EKS was the solution opted for, as it presents the most provider independent configurations.
+
+    \section{Optimization} \label{sec:Optimization} 
+    
+    A mathematical optimization problem, aims to maximize an objective function which depends on decision variables and subject to a combination of constraints. There are several classes of optimization problems, such as linear and non-linear optimization, but for the purpose of this thesis, only the former will be considered.
+    
+    A generalized definition of an optimization problem has the form: 
+    \begin{align} \label{eq:generalizedOptimization}
+        \min_{\boldsymbol x}\; & f(\boldsymbol{x}) \\
+        \mbox{subject to }   & g_{i}(\boldsymbol x) \leq 0      & \forall \; i \in 1,2,..., m
+    \end{align}
+    
+    where $f$ is the objective function and $g$ are functions associated to the inequality constraints, and $\boldsymbol{x}$ is a vector representing the decision variables.
+
+    \subsection{Linear Programming}
+    
+    Linear programming, is the special case where the objective and contraints are represented by functions that obey the following property \cite{boyd2004convex}:
+    \begin{equation}
+        f_i(\alpha x + \beta y) = \alpha f_i(x) + \beta f_i(y) 
+    \end{equation}
+    
+    The previous formulation in \ref{eq:generalizedOptimization}, when applied to this case and transforming it into the standard form \cite{hillier2012introduction}, becomes:
+    \begin{align}
+        &\max \; & c_1*x_1 + c_2*x_2 + ... c_n*x_n,\\
+        &\mbox{subject to }     & a_{i1}*x_1 + a_{i2}*x_2 + ... a_{i3}*x_n \leq b_i\; \forall \; i \in 1,2,..., m\\
+        &\mbox{and}\; & x_1, x_2, ..., x_n \geq 0
+    \end{align}
+    
+    A solution can then either be feasible, infeasible or unbounded.
+    
+    Integer linear programming is different to the previous cases as the decision variables are bounded to integer quantities \cite[Chapter~12]{hillier2012introduction}.
+    
+    An example application of this approach, is one that involves determining the amount of consumers in a consumer group to increase record consumption rate of a certain Kafka topic. The decision variable becomes the amount of consumers deployed and the objective function is to maximize the amount of messages being consumed. As a consumer is a non-divisible unit, this problem can only be solved by Integer Linear Programming.
+    
+    \subsection{Multi-objective Optimization Problems}
+    
+    When formulating an optimization problem, it is possible that the aim is not to optimize a single objective function, but multiple.
+    
+    One of the ways to approach the problem is to combine the multiple objective functions into a single objective to then maximize/minimize. The downside to this approach is the fact that a relative importance has to be given to each individual objective, which might not always be a simple comparison.
+    
+    In \cite{nardelli2018multi}, an algorithm (Adaptive Container Deployment) is specified as an Integer Linear Programming Problem which aims to optimize container deployment goals by acquiring or releasing geo-distributed computing resources.
+    
+    To evaluate a given objective function, the authors create two metrics, deployment cost and adaptation cost. The first, is responsible for containing information w.r.t. the amount of virtual machines that are available on a cluster, whereas the second holds the cost related to the time it takes to deploy all application components. For this last metric, not only is the time a VM takes to boot taken into consideration, but also the time it takes to download a given container image (depends on the location) and the time a container takes to spawn. 
+    
+    As can be verified, each objective could be optimized with regards to itself, but considering it is a multi-objective problem the resulting objective function is a combination of each metric, by performing a weighted sum of the normalized deployment and adaptation costs.
+    
+    Another approach is to use linear goal programming, which allows to formulate a multi-objective problem into a standard linear programming problem by setting as constraints the target values for each of the multi-objective functions \cite[Chapter~4]{hillier2012introduction}. Although it might be a good approach to simplify a given problem, it requires a user to define a specific numeric goal for each of the objectives.
+    
+    Lastly, the pareto solution is another approach to multi-objective problems (MOP). This approach gathers the pareto front which consists of all optimal non-dominated solutions to a MOP. A solution $y$ is considered to dominate a solution $z$ if the evaluation of each objective function at y, is considered to be more optimal than when evaluated at $z$. In turn, a solution $y$ is considered to non-dominated by a solution $z$ when both are better than the other at one of the objective functions to be evaluated. These are the solutions that will make out the pareto front, and represents a set of trade-off solutions among the different objectives \cite{durillo2014multi}.
+    
+    Contrary to the previous alternatives, the pareto front does not require a user to determine preference beforehand, and provides with a tool precisely for preference discovery. To measure the quality of the pareto front, it is common to use a hypervolume measure, which determines the accuracy and diversity of a set of points. It is evaluated w.r.t. a single point, which is usually chosen as the maximum value of each objective function, and is more formally defined as the union of hypervolumes defined by each box to be defined between a point in the set and the reference point. This measure is more formally defined in \cite{guerreiro2020hypervolume}.
+
+\end{comment}
+
+
+\section{Bin Packing Problem}
+
+
+The bin packing problem (BPP), as defined in the literature, is a combinatorial optimization problem that has been extensively studied since the thirties. Due to its NP-hard nature, on the practical side, several heuristic and metaheuristic algorithms have been proposed, as well Integer Linear Programming to determine the optimal solution. The former benefits from lower time execution to reach a solution which may not be optimal, whereas the latter provides the optimal solution, but requires more time to do so.
+
+As specified in \cite{wascher2007improved}, there are several categories with which to define a BPP. The problem at hand is the one of a Single Bin Size Bin Packing Problem (SBSBPP).
+
+As described in \cite{delorme2016bin}, an informal definition of this BPP, is: provided there are n items, each with a given weight \( w_j  \, (j = 1, ..., n) \) and an unlimited amount of bins with equal capacity \( C \), the goal is to arrange the n items in such a way that the capacity of each bin is not exceeded, and to determine the minimum amount of bins required to hold the n items.
+
+Formally, the problem can be summarized as the following optimization problem:
+
+\begin{alignat}{3}
+\label{BPP model}
+    &\min &&\sum_{i \in B} y_i && \\
+    &\text{subject to} \quad
+                && \sum_{j \in L} w_j x_{ij} \leq C. \quad          && \forall \; i \in B \label{opt:c1}\\
+    &           && \sum_{i \in B} x_{ij} = 1, \quad                 && \forall \; j \in L \label{opt:c2} \\
+    &           && y_i \in \{0, 1\}                                 && \forall \; i \in B \\
+    &           && x_{ij} \in \{0,1\}                               && \forall \; i \in B, j \in L
+\end{alignat}
+
+$x_{ij}$ represents whether an item $j$ is packed in the bin $i$, whereas $y_i$ determines whether bin $i$ is used. As for the constraints, \ref{opt:c1} assures that the sum of the items in a given bin, does not exceed it's capacity, and \ref{opt:c2} makes sure that every item is assigned a bin. 
+
+Set $B$ corresponds to the available bins, and $L$ as the list of items to be arranged into different bins. 
+
+It is also common to represent the bin-packing problem in its normalized version, where all the weights are down-scaled by the total capacity of a bin, and the capacity of each bin is $1$. This implies modifying \ref{opt:c1} into:
+
+\begin{equation}
+    \sum_{j \in L} \hat w_j x_{ij} \leq 1. \quad \forall \; i \in B,
+\end{equation}
+where \(\hat w_j\) represents the normalized weight of an item \( w_j/C \).
+
+This approach generalizes the analysis of the bin packing approach, and unless stated otherwise, it will be the model used throughout this analysis. 
+
+Another important note, is that "weight" and "size" will be used interchangeably when analyzing the following algorithms. 
+
+\subsection{Linear Programming}
+
+When interested in achieving the optimal solution, the textbook implementation of the BPP model presented in (\ref{BPP model}) is not computationally efficient. A common approach is to study the Upper and Lower Bounds of the Algorithm, and to add valid additional constraints to restrict the search space.
+
+In \cite{delorme2016bin}, there is an extensive review on the state of the art algorithms that have been developed to solve the ILP problem, comparing several models and their efficiency when solving the same set of problems. 
+
+Due to the dynamic nature of the problem that will be further described in \ref{chap:chap3}, when solving the BPP, there will already exist a given arrangement as for which bin each item is assigned to, provided by previous iterations of the algorithm. Because the items change size between iterations, the algorithm has to be run again to determine whether there is a better configuration, not only to attempt to minimize the amount of bins used, but also to determine whether the capacity of a bin is being exceeded. For this reason, approaching this problem using the Linear Programming approach, would completely disregard whether a certain item is assigned to a different bin other than the one it is currently in. For this reason, the work elaborated throughout this thesis will have more emphasis on Approximate algorithms, where there is more control over the bin assignment rules.
+
+\subsection{Approximation Algorithms and Heuristics}
+\label{sub:Approximation Algorithms and Heuristics}
+
+During this section, the method presented in \cite{coffman2013bin} to classify a BPP problem will be employed throughout the analysis of the algorithms.
+
+There are 2 possible states a bin can find itself while executing the algorithm, \textit{open} or \textit{closed}. In the former, the bin can still be used to add additional items, whereas in the latter, they are no longer available and have already been used.
+
+In the literature, it is common to present a parameter $\alpha$ which indicates the size limit of the weights within the list $L$, which can vary between \( (0, 1] \). Considering the problem that will be presented in \ref{chap:chap3} does not limit the size of the weights - other than being smaller or equal to the bins capacity -, we will consider $\alpha = 1$. 
+
+To compare the performance between algorithms, the Asymptotic Performance Ratio (APR), is what will be employed throughout this chapter. $A(L)$ denotes the amount of bins a certain algorithm makes use of for a configuration of items $L$. $OPT(L)$ is used to represent the amount of bins required to achieve the optimal solution. Defining $\Omega$ as the set of all possible lists, each with a different arrangement of their items, given 
+
+\begin{equation}
+    R_A (k) = \sup_{L \in \Omega} \left \{ \frac{A(L)}{k} : k = OPT(L) \right \}
+\end{equation}
+the APR is
+\begin{equation}
+    R_A^\infty = \limsup_{k \to \infty} R_A(k).
+\end{equation}
+
+Algorithms can be classified into several classes, as clearly specified in \cite{coffman2013bin}, but the only classes that are of interest for this problem are:
+\begin{enumerate}
+    \item online - Algorithms that have no holistic view over any other item in the list except the one it is currently assigning a bin to. It is also a requirement that a bin is assigned to the item as soon as it is analyzed.
+    \item bounded-space - Sub-class of online algorithms, where the amount of bins open at a single instance is limited by a constant provided prior to its execution.
+    \item offline - The algorithm is aware of all the items in the list before assigning bins to each item, and so their ordering does not directly impact the outcome as it is not necessary to respect the list's initial order.
+\end{enumerate}
+
+\subsubsection{Online Algorithms}
+
+As previously mentioned in \ref{sub:Approximation Algorithms and Heuristics}, without an overview of all the items within a list, whenever an item is analyzed it has to be assigned a bin. This also implies that the bin in which the current item will be inserted is a function of the weights of all the preceding items in the list.
+
+This section will analyze Any fit, Almost any fit, bounded-space and reservation technique algorithms.
+
+Throughout the following sections, when \textit{current item} is mentioned, it is referring to the next item to assign a bin to. After assignment, the item that follows it in the list, is then considered the \textit{current item}.
+
+\textbf{Next Fit (NF)} is one of the simplest algorithms developed to solve the bin packing problem heuristically, and it consists in the following procedure. The current bin is considered to be the last non-empty bin opened. If the current bin has space for the item then the item is inserted. Otherwise, the current bin is closed, a new one is opened, and the item is inserted. The next item on the list is then considered the current item.
+
+With regards to time complexity, NF is $O(n)$. And because there is only one open bin at a time, this is a bounded-space algorithm with $k = 1$. As proven in \cite{johnson1973near}, 
+
+\begin{equation}
+    R_{NF}^\infty = 2.
+\end{equation}
+
+\textbf{Worst Fit (WF)}: For each element, it looks for the open bin that has the most space for the item where it fits, and inserts the item on that bin. If there is no open bin that can hold the item, then a new bin is opened, and the item is inserted. Having no closing procedure, this algorithm is unbounded, and it does not run in linear time.
+
+Although it is expected that this algorithm would perform better than the NF, in the worst-case performance analysis it does not gain any benefits from not closing its bins, as stated in \cite{man1996approximation}
+
+\begin{equation}
+    R_{WF}^\infty = R_{NF}^\infty.
+\end{equation}
+
+\textbf{First Fit (FF)} searches each open bin starting from the lowest index, and the first bin that has the capacity to fit the item, is where the item is inserted. If there is no open bin where the item can be inserted, then a new bin is opened where the item is inserted. \cite{johnson1974worst} showed that 
+
+\begin{equation}
+    R_{FF}^\infty = \frac{17}{10}.
+\end{equation}
+
+There is a more general class of algorithms presented as \textit{Any Fit} ($AF$) in \cite{johnson1974fast}. This class' constraint is that if $BIN_j$ is empty, then no item will be inserted into this bin if there is any bin to the left of $BIN_j$ that has the capacity to contain the item. In the same paper it is also shown that no algorithm that fits this constraint can perform worst than the WF, nor can it perform better than the FF, always with respect to the asymptotic performance ratio. Then
+
+\begin{equation}
+    R_{FF}^\infty \leq R_A^\infty \leq R_{WF}^\infty, \; \forall \; A \in AF
+\end{equation}
+
+\textbf{Best fit (BF)}: Attempts to fit the item into any of the open bins where it fits the tightest. If it doesn't fit in any, then a new bin is created and assigned to the item. As can be seen, it is similar to the worst fit, with exception to the fitting condition, differing only in the fact that the item is inserted where it fits the tightest, and not where it leaves most slack.
+
+As it happens, BF also belongs to the $AF$ class, and it performs as well as the First Fit
+
+\begin{equation}
+    R_{BF}^\infty = R_{FF}^\infty.
+\end{equation}
+
+In \cite{johnson1974fast}, another class of algorithms presented, which is also a subclass of $AF$, is \textit{Almost Any Fit} ($AAF$). This class has as constraints: 
+\textit{If $BIN_j$ is the first empty bin, and $BIN_k$ is the bin that has the most slack, where $k < j$, then the current item is not inserted into $k$ if it fits into any bin to the left of k.} One of the properties proven in the same paper, is that 
+
+\begin{equation}
+    R_A^\infty = R_{FF}^\infty, \; \forall \; A \in AAF,
+\end{equation}
+which is to say that any algorithm that fits the previous constraints, have the same APR as the FF algorithm. Focusing on the constraints, it is clear to see how BF and FF belong to this class. 
+
+Due to the constraints presented in the $AAF$ class, an improvement for the WF algorithm arises wherein the current item is inserted in the second bin with most space, instead of the first. This algorithm is the Almost Worst Fit (AWF), and with this simple change, now belongs to the AAF class, having as APR
+
+\begin{equation}
+    R_{AWF}^\infty = R_{FF}^\infty = \frac{17}{10}.
+\end{equation}
+
+\subsubsection{Bounded-space} 
+
+Bounded-space algorithms have a predefined limit on the amount of bins that are allowed to be open at a given instance, which will be defined as $k$. It is also a subclass of the online algorithms.
+
+An example of a bounded-space algorithm is NF, as it never has more than a single open bin at a given instant. The other presented online algorithms can also be adapted into a bounded space algorithm, simply by specifying a procedure as to which bin to close before exceeding the limit.
+
+A bounded-space algorithm can be defined via their packing and closing rules \cite{coffman2013bin}. A class that derives from rules based on the FF and BF can be defined in the following manner: 
+\begin{itemize}
+    \item Packing - When packing an item into one of the available open bins, the selected bin either follows a FF or BF approach.
+    \item Closing - When choosing which bin to close, if following the FF approach, then the bin with the lowest index is closed. If following the BF it's the bin that is filled the most that is selected as the one to be closed.
+\end{itemize}
+
+The notation for this class of algorithms is $AXY_k$, where X represents the packing rule, and assumes the letters $F$ or $B$, and $Y$ which can either be a $F$ or a $B$, refers to the closing rule. The $k$ represents the maximum amount of open bins allowed.
+
+\textbf{Next-k-fit} applies both packing and closing rules based on the first fit algorithm, and as expected when $k \to \infty$ it approximates the FF algorithm, having as APR $17/10$. For variable $k$, as shown in \cite{mao1993tight}
+
+\begin{equation}
+    R_{AFF_k}^\infty = \frac{17}{10} + \frac{3}{10k - 10}, \quad \forall \; k \geq 2.
+\end{equation}
+
+\textbf{Best-k-fit}, which is also known as the $ABF_k$ algorithm, has been proven in \cite{mao1993besk} to have
+
+\begin{equation}
+    R_{ABF_k}^\infty = \frac{17}{10} + \frac{3}{10k}, \quad  \forall \; k \geq 2.
+\end{equation}
+
+As for $AFB_k$, \cite{zhang1994tight} showed that this algorithm has
+
+\begin{equation}
+    R_{AFB_k}^\infty = R_{AFF_k}^\infty, \quad  \forall \; k \geq 2.
+\end{equation}
+
+For the last possible combination of this class of algorithms, $ABB_k$ has been proven in \cite{csirik2001bounded} to have 
+
+\begin{equation}
+    R_{ABB_k}^\infty = \frac{17}{10},  \quad \forall \; k \geq 2
+\end{equation}
+which surprisingly indicates that the value of $k$ (as long as it's bigger than two) has no effect on the APR metric of this algorithm, contrary to all the previous algorithms.
+
+The next algorithms make use of a reservation technique that proved to be very useful to break the lower bound of the APR of the Any Fit class of algorithms. The first algorithm to be developed of this type was the Harmonic-Fit ($HF_k$) which makes use of k to split the sizes of items into $k$ different intervals.
+
+$I_j$ denotes the interval of sizes with index j, and is within the range 
+\begin{equation}
+    \left (\frac{1}{j+1}, \frac{1}{j} \right], \quad \forall \; j \in \{1, ..., k-1\}.
+\end{equation}
+$I_k$ is defined as the interval from $(0, 1/k]$.
+
+$B_j$ is used to classify the bin type which is responsible for holding items of type $I_j$.
+
+\cite{lee1985simple} presents the APR of $HF_k$ in the following manner. If k denotes the maximum amount of open bins allowed at once, then the asymptotic performance ratio can be shown with respect to $k$ in the following manner:
+
+\begin{align}
+    & t_1 = 1 \quad and \quad t_{i+1} = t_i(t_i + 1) \quad \forall \; i \geq 1 \\
+    & \frac{1}{t_i} = 1 - \sum_{j=1}^{i-1} \frac{1}{t_j + 1} \\
+    & t_i < k \leq t_{i+1} \quad for \; i \geq 1 \\
+    & R_{HF_k}^\infty = \sum_{j=1}^{i} \frac{1}{t_j} + \frac{k}{t_{i+1}(k-1)}
+\end{align}
+
+When $k \to \infty$, then $R_{HF_k}^\infty \approx 1.6910$. It is also important to note than to obtain a better APR metric compared to the other online bin packing algorithms, $HF_k$ achieves this with $k \geq 7$, as is shown by \cite{lee1985simple}.
+
+Posterior to this technique being presented, it was clear that the reservation technique could be a good approach to improve the performance of the Any-Fit algorithms, and as such, several other algorithms have been created around this technique, that achieve even better APR's than HF, but because these techniques all involve assigning item types, based on their size, to their respective bin type, this approach is not applicable to the problem, as the control over item rebalancing is reduced, which will further be described in the following chapter.
+
+
+
+\subsubsection{Offline Algorithms}
+
+Comparing with the previous section, offline algorithms have the added benefit that all items are known prior to its execution. As long as the list of items remains the same, items can be grouped, sorted or anything that might be convenient for the algorithm that is going to execute over the list of items. 
+
+It is important to note that as soon as an algorithm chooses to sort the list of items, it automatically implies that the algorithm no longer runs in linear-time as the sorting algorithm would have a time complexity of $O(n log(n))$.
+
+Most of the Any fit algorithm, perform best if the list of items is sorted in a non-increasing order. The following three algorithms remain the same as for how the packing is done when analyzing the list of items, with the exception that before running the algorithm, the list is sorted.
+
+Provided the list is sorted in the aforementioned manner, the \textbf{Next Fit Decreasing (NFD)} has a considerable improvement in terms of it's worst-case performance, and performs slightly better than FF and BF, as presented by \cite{baker1981tight}
+\begin{equation}
+    R_{NFD}^\infty \approx 1.6910.
+\end{equation}
+
+As can be seen in \cite{johnson1974worst}, \textbf{Best Fit Decreasing (BFD)} and \textbf{First Fit Decreasing (FFD)} improve the APR metric with presorting compared to their online versions of the same algorithm 
+\begin{equation}
+    R_{BFD}^\infty = R_{FFD}^\infty = \frac{11}{9}.
+\end{equation}
+
+Another algorithm which is worth mentioning within this class of offline algorithms is the \textbf{Modified First Fit Decreasing (MFFD)}. As shown in \cite{johnson19857160}, The APR is
+\begin{equation}
+    R_{MFFD}^\infty = \frac{71}{60},
+\end{equation}
+which is achieved by initially presorting the items in a decreasing manner and grouping each item into seven distinct groups based on the item's size. 
+
+\begin{table}[H]
+\caption{Item size interval which guides the grouping for the MFFD algorithm.}
+\begin{center}
+\begin{tabular}{ |c|c| } 
+    \hline
+    Group & Item size interval \\ 
+    \hline
+    A & $\left( 1/2, 1 \right]$ \\ 
+    B & $\left( 1/3, 1/2 \right]$ \\ 
+    C & $\left( 1/4, 1/3 \right]$ \\ 
+    D & $\left( 1/5, 1/4 \right]$ \\ 
+    E & $\left( 1/6, 1/5 \right]$ \\ 
+    F & $\left( 11/71, 1/6 \right]$ \\ 
+    G & $\left( 0, 11/71 \right]$ \\ 
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+After doing so, the algorithm then performs the following five steps: 
+\begin{enumerate}
+    \item For each item that belongs to group A, from biggest to smallest, assign it a bin with the same index as the item has within it's group. When this process terminates, there are as many bins as items in group A and the bins created are $B_1, ..., B_{|A|}$.
+    \item Iterating over the existing bins from left to right, for each bin, if any item in group $B$ fits in the bin, insert the biggest such item in the current bin.
+    \item Iterating through the list of bins from right to left, for each bin, if the current bin contains an item that belongs to group $B$, do nothing. If the two smallest items in $C \cup D \cup E$ do not fit, do nothing. Otherwise insert the smallest unpacked items from $C \cup D \cup E$ combined with the largest item from $C \cup D \cup E$ that will fit.
+    \item iterate over the list of bins from left to right, and for each bin if any unpacked item fits, insert the largest such item, repeating until no unpacked item fits.
+    \item Lastly, the remaining items that did not fit in bins $B_1, ..., B_{|A|}$ are inserted in an FFD fashion starting with a new bin $B_{|A|+1}$. 
+\end{enumerate}
+
+
+\section{Conclusion}
+
+As presented throughout this chapter, the work that will be developed within this context involves several technologies that are constantly evolving.
+
+Kafka presents a great solution to decoupling services and allowing asynchronous communication between microservices. Other features that Kafka is designed for is scalability, which allows the services to create more replicas of consumers within the same consumer group for faster data consumption. It is important to note that Kafka does not provide autoscaling, just the support for distributed data consumption. 
+
+To enable the scheduling of distributed containers, Kubernetes is the most common tool for this purpose. The more support cloud providers develop for Kubernetes, the less manual interaction is required to add or remove nodes based on cluster use. This not only simplifies the cluster management, but it also automates cost optimization as the payment becomes per pod, instead of paying for the manually inserted node. For this reason, the autopilot tool provided by GKE is what will be used to provide a truly dynamic approach to consumer group autoscaling.
+
+Kafka's rebalancing algorithm attempts to balance the load between the consumers within a group by assigning approximately the same amount of partitions to each consumer. Because the partitions assigned do not all have the same write speed ($bytes/s$), it is not guaranteed that the consumer will in reality have the load balanced between them. 
+
+This provides the basis for the work that will be developed. The objective is to attempt to minimize the cost of a consumer group (the number of instances running), while at the same time attempting to make sure that the group does not get behind in the messages it has to read from a topic. 
+
+This approach is only possible because there is a general view of the maximum data rate of consumption of a single consumer within the studied context - although it can also be applied in other scenarios as long as there is a predictable model for a single consumer -. The next chapter will specify the consumer model, and formulate the problem as a BPP.
+
+In more detail, the aim is to try and minimize the amount of consumers active at once, while simultaneously making sure that the sum of the write speed of the partitions assigned to a single consumer does not exceed it's maximum data consumption capacity, and attempting to minimize partition redistribution between consumers. The last condition is due to the fact that assigning a partition to a new consumer briefly pauses the consumption so another consumer can pick up where the previous left off. 
+
+This consumer model is what allows to model the problem as a BPP. Approximation algorithms were considered the most appropriate approach as they are the algorithms that allow most control over the partition redistribution with least modification. This is also the reason why the Linear optimization approach will not be implemented. 
+
+% \section{Distributed Consumer Performance}
+
+% \section{Filters}
+
+%\section{Summary}
