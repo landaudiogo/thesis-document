@@ -86,7 +86,7 @@ The first scenario has the producer send the message at 3 different rates for ap
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.7\textwidth]{images/monitor_step.png}
+    \includegraphics[width=0.7\textwidth]{images/monitor/monitor_step.png}
 \caption{Monitor step response to three different controlled write speeds.}
 \label{fig:monitor_step}
 \end{figure}
@@ -95,7 +95,7 @@ The second scenario has the producer wait a randomized time interval (between $0
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{images/monitor_random.jpg}
+    \includegraphics[width=\textwidth]{images/monitor/monitor_random.jpg}
 \caption{Monitor response to a producer waiting uniformely between [0.01,2]s every time it produces a record.}
 \label{fig:monitor_random}
 \end{figure}
@@ -305,7 +305,7 @@ The following graph demonstrates how the consumer is capable of maintaining a st
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{images/Consumer_Capacity.png}
+    \includegraphics[width=\textwidth]{images/consumer/Consumer_Capacity.png}
 \caption{Density Plot for the consumer's measured throughput in the 3 testing conditions.}
 \label{fig:consumer_capacity}
 \end{figure}
@@ -346,7 +346,7 @@ For this reason, the following diagram describes how the pieces fit together, an
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{images/System Design.png}
+    \includegraphics[width=\textwidth]{images/controller/System Design.png}
 \caption{System architecture deployment diagram}
 \label{fig:system_architecture}
 \end{figure}
@@ -371,7 +371,7 @@ The following diagram shows the high level architecture of the controller proces
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{images/state_machine.png}
+    \includegraphics[width=\textwidth]{images/controller/state_machine.png}
 \caption{Controller State Machine.}
 \label{fig:state_machine}
 \end{figure}
@@ -397,7 +397,7 @@ In the implementation of the existing approximation algorithms, another step was
  
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{images/ApproximationAlgorithm_NewBin.jpg}
+    \includegraphics[width=0.6\textwidth]{images/controller/ApproximationAlgorithm_NewBin.png}
 \caption{New bin creation procedure when performing an approximation algorithm.}
 \label{fig:approximation_bin_creation}
 \end{figure}
@@ -548,7 +548,7 @@ Using this procedure, six different sequences of measurements were created, each
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{images/Relative Number of Consumers.png}
+    \includegraphics[width=0.8\textwidth]{images/controller/Relative Number of Consumers.png}
 \caption{Average Relative Deviation from the configuration that provides the minimum number of consumers, with a random initial speed for each partition.}
 \label{fig:relative_nconsumers}
 \end{figure}
@@ -559,7 +559,7 @@ In \ref{fig:relative_nconsumers}, each partition starts with a random speed betw
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.7\textwidth]{images/Relative Number of Consumer Modified.png}
+    \includegraphics[width=0.7\textwidth]{images/controller/Relative Number of Consumer Modified.png}
 \caption{Average Relative Deviation from the configuration that provides the minimum number of consumers, with a random initial speed for each partition. (Filtered to present the modified algorithms and BFD)}
 \label{fig:relative_nconsumers_modified}
 \end{figure}
@@ -568,7 +568,7 @@ As for the modified versions of these algorithms, due to its sorting strategy, M
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.7\textwidth]{images/Rscore.png}
+    \includegraphics[width=0.7\textwidth]{images/controller/Rscore.png}
 \caption{Impact on Rscore for different Deltas (random initial partition speed).}
 \label{fig:rscore}
 \end{figure}
@@ -585,7 +585,7 @@ To select the algorithm to use within the controller, there is a trade-off betwe
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{images/Facet Wrap Pareto Front.png}
+    \includegraphics[width=\textwidth]{images/controller/Facet Wrap Pareto Front.png}
 \caption{Pareto Front for each delta value used in the measurement sequences.}
 \label{fig:pareto_front}
 \end{figure}

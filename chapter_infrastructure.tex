@@ -1,1 +1,289 @@
 \chapter{Infrastructure} \label{chap:infrastructure}
+
+\section{Monolith Architecture}
+
+Within this type of architecture, all application concerns are contained in a single deployment.
+
+It is usually the first approach to most product development due to its simplicity, but it is hard to ignore its disadvantages as it can easily become the bottleneck of any system.
+
+When developing for this kind of architecture, a lot more care is given to how each part of the system communicates with one another, as communication is achieved through method or function calls. 
+
+This leads to very tight coupling between different application components, which inevitably provides a lot of friction to updating the codebase due to the high risk of it disabling the service entirely.
+
+Like with most applications, with every new feature, the monolith grows, also increasing the computing resources required to run a single instance. In times of traffic peak, it is common for an application to scale its service allowing for response speed to remain approximately constant at all times. 
+
+The bigger the deployment, the longer it takes to make a new instance available and the more computing resources are used, making it more expensive to provide availability in times of high traffic.
+
+With this type of system, technological choices have a huge impact on the final product, and have to be thoroughly planned in the beginning to guarantee that the system fulfills its requirements. It also makes it harder to adopt a different technology further into the development as the technological cost and time invested would be too much to even consider this option. This point alone, makes it hard to accept this kind of architecture, especially considering the frequency of new advances in this field, and it is only natural that a new approach to system architecture were developed.
+
+\section{Microservices}
+
+Although there is no formal definition, \cite[Chapter~1]{newman2015building} states that ``Microservices are small, autonomous services that work together.''
+
+Small is of course a subjective measure, but in fact there is no "theoretical" boundary on this quantity. It depends on the context of the application and the business, but considering the size of these microservices, it is only logical that each of the small services follows some kind of team structure allowing for parallel development, without any real coupling between the services. 
+
+It is also stated in \cite{MartinFowlerMicroservices} that Microservices are built around different ``business capabilities'' which are ``independently deployable by fully automated deployment machinery''. In other words, each microservice can be deployed on its own, hence scaling services and reliability is "included" with this kind of architecture. 
+
+This makes updating code very low risk. As an example, in the scenario there is some flaw in a new deployment sent to production, it will only affect that microservice in particular, making it easier not only to track where the fault lies, but also guaranteeing that the remaining services are not made fully unavailable.
+
+On the topic of scaling, with smaller decoupled services, only the service that requires scaling is in fact replicated, which leads to less computer resources utilization thanks to the reduced overhead of the service, resulting in a considerate cost reduction, and faster response to scaling needs.
+
+With the possibility of running decoupled services interacting through lightweight network calls, each microservice can be programmed in whichever programming language and run the datastore that fits its needs best. The reduced size of each service, also makes technological changes and code refactoring a lot simpler, and can be done in a lot less time, compared to its counterpart.
+
+With smaller services, it is only logical that team separation follows the lines that separate each microservice (business capabilities), leading to more diverse qualities within a single team/service, as mentioned in \cite{MartinFowlerMicroservices}. When a new feature is to be developed for the service, the requirements rarely cross between teams making it faster to develop a single feature.
+
+It is also worth mentioning that the separation between each service allows several representations of the same data in different ways depending on the service that is storing it. The benefits of this approach is not only in a projection perspective where there isn't a need to over-engineer how the data will be stored for future purposes that still are not implemented, but it also helps model the world in the way that fits each service best.
+
+This of course does not come without hardships, as maintaining data consistency between each service is one of the hardest tasks in this distributed data storage approach. On this note, we introduce the next section, which attempts to tackle this issue.
+
+
+\section{Distributed Messaging Systems}\label{sec:DMS}
+
+With a microservices approach, rarely do two components communicate with one another directly or through synchronous communication. If this were the case, the communication would become too convoluted with the increase of instances and services, becoming a source of coupling. 
+
+As stated in \cite{sharvari2019study}, it is clear the market needs are pointing to a messaging system that has the following features:
+\begin{itemize}
+    \item Scalable - the system provides tools with which services can process a bigger load of messages in a time of intense volume of traffic;
+    \item Space decoupling – The receiving and sending entity do not need to “know” each other;
+    \item Reliable – The system can guarantee that the receiver has received the message;
+    \item Asynchronous  – The sender and receiver do not have to be active at the same time, and as soon as a message is produced the producer can go back to its tasks;
+\end{itemize}
+
+
+To enable decoupling between services, most messaging systems leverage the use of a broker, providing with the space and time decoupling, with the added benefit of it also being asynchronous, in the sense that after the broker acknowledges the reception of the message sent by the producer, the producer does not need to worry about its consumption allowing for it to go back to the tasks it has at hand. 
+
+There are two main approaches at solving this problem, event and message driven paradigms.
+
+\subsection{Message Driven}
+
+This paradigm makes use of message queues where producers send the data for it to be consumed by a single consumer in the same order it was appended to the queue. When data is produced, in case there isn’t a consumer interacting with the queue, the message is stored until read. 
+
+RabbitMQ is a well known platform commonly used for this purpose. All the previous features are provided, and on the note of scalability, a given service can connect to a queue with one or more consumers to increase consumption rate. This is done using round-robin dispatching \cite{RabbitMQscale} which simplifies parallelizing work between instances, always guaranteeing that each message in a queue will be read by a single consumer.
+
+\subsection{Event Driven (Publish/Subscribe)}
+
+Messaging system which allows a producer to send a message to a certain category, which can be posteriorly retrieved by multiple consumers which are subscribed to the same category. This architecture not only decouples the services, it also allows many-to-many communication.
+
+A common application for the event driven paradigm is for event sourcing. This is the pattern of storing any event that changes a systems state via an event object, onto an event log that preserves the sequence in which the events occurred. This was presented as an alternative to storing structures that model the state of the world, into storing events that lead to the current state of the world \cite[Chapter~5]{nadareishvili2016microservice}.
+
+Comparing this scenario to the one of using a database, in the latter, every time the main database is updated, a second database recording the historic state has to be updated as well, storing the past states the system has been through. With event sourcing, when an event changes the state of the system, it is simply appended to the sequential event log, which in turn makes it less expensive to make operations of this type.
+
+For these reasons, HUUB opted for this kind of architecture for their system, resorting to Kafka as their messaging system. 
+
+\subsection{Kafka}
+
+Kafka functions as a distributed log running in multiple brokers that coordinate with each other to form a cluster.
+
+\subsubsection{Broker}
+
+A Kafka cluster is made up of one or more brokers, which function as servers where the messages can be published to, and consumed from.
+
+This is the entity each client has to connect to in order to interact with other services. After a client connects to a single broker, it will also be connected to the remaining elements of the cluster.
+
+\subsubsection{Topics and Partitions}
+
+When data is published, the producer has to specify to which topic the record goes to. 
+
+A topic contains several partitions, and each partition can be stored in different brokers. Message order is only guaranteed within a single partition, and to insert a record consistently to the same partition, the same key has to be provided when inserting the message. 
+
+This consistency is only guaranteed while the number of partitions remains constant. As soon as a partition is added or removed, a message with the same key might end up in a different partition, but order will be guaranteed while the structure of the topic remains the same.
+
+At the time of topic creation, there are three parameters that have to be provided: 
+\begin{enumerate}
+    \item \textbf{topic} - The name of the topic to create;
+    \item \textbf{partitions} - The amount of partitions the topic is subdivided in;
+    \item \textbf{replication-factor} - The amount of replicas of each partition to guarantee a reliable service.
+\end{enumerate}
+
+Although the first two parameters are self-explanatory, the third is one of the most important features to guarantee a reliable service to a producer. 
+
+Assuming the scenario of choosing the replication factor of 2, this means that for each partition in the created topic, there will be 2 partitions that represent the same log in different brokers. At any given time, there is only 1 partition leader (broker), which leaves the other partition trying to keep up with the main log. When a replica is up-to-date with the leader, it becomes an in-sync replica (ISR).
+
+
+In the scenario the partition leader fails unexpectedly, the partitions it is leading have to be reassigned a different leader. For each partition, the new partition leader will be one of the brokers that contains an in-sync replica of the same partition.
+
+\subsubsection{Producer}
+
+To publish data, producers have to specify one of the brokers from the cluster - which automatically connects it to all brokers in the cluster - and to which topic the record is to be sent.
+
+The partition that belongs to the partition leader is where the messages are appended and read. To guarantee a message is delivered safely to the cluster, a producer might want to wait for acknowledgement. This is one of the configurations that allows for reliability when adding a message to a topic \cite{KafkaProducer}. 
+
+There are 3 possible values for this configuration:
+\begin{itemize}
+    \item $acks=0$ - Producer does not wait for acknowledgement, making it an unreliable configuration;
+    \item $acks=1$ - Producer waits for acknowledgement from the partition leader;
+    \item $acks=all$ - Producer expects an acknowledgement from leader and all of its replicas.
+\end{itemize}
+
+After appending data to a log, it can no longer be changed (immutability).
+
+When producing a message, if the order of a group of messages is important, Kafka provides a feature that allows messages to be consumed in the same order as they were produced. This is done by setting the key of a record to the same value, as a hash function runs over the key, and the partition where the message goes to is consistently the same, as long as the number of partitions does not change. If the number of partitions changes, then it is no longer guaranteed that same key messages will end up in the same partition as prior to the parameter being changed, only guaranteeing same key messages go to the same log from the moment the configuration changes and until it is modified.
+
+To improve throughput when the volume of traffic increases, Kafka provides other configurations which allow a single producer to send messages in a batch, opposed to sending a message at a time. These configurations are:
+\begin{itemize}
+    \item \texttt{batch.size} - Before sending a single record to the topic, the producer batches the messages (by partition), and when it reaches the size defined by this parameter, it proceeds with appending the records to its respective partitions. 
+    \item \texttt{linger.ms} - How long the consumer waits before sending the messages it has already batched.
+\end{itemize}
+
+\subsubsection{Consumer Group and Consumer Clients}
+
+When connecting a consuming client to the messaging system, the topic(s) it wishes to subscribe to, the consumer group and at least one of the brokers from the cluster have to be provided (a connection to a single broker connects the consumer to all the other brokers in the cluster). 
+
+Messages are then read in order w.r.t a single partition, and in parallel w.r.t. multiple partitions.
+
+Each consumer from within a consumer group, reads from exclusive partitions. This means that two consumers belonging to the same consumer group cannot be responsible for reading messages from the same partition, which in turn implies that the parallelism Kafka provides, is through the partitions in a topic. The amount of active consumers a single consumer group can have is therefore limited to the number of partitions in a topic \cite{OreillyConsumer}. 
+
+In order to maintain a reliable consumption service, whenever a consumer successfully reads a message and commits its offset, kafka internally stores the offset in a topic with the name \texttt{\_\_consumer\_offset} \cite{KafkaConsumer}. 
+
+There is another important functionality of this internal topic, which is related to the consumer group management. For a group to know when to rebalance it is important for the system to monitor the state of each consumer in the group, and this is performed by a group coordinator. To elect a group coordinator, the consumer group's id is selected as the message key, which is then hashed into a partition of this internal topic. The partition leader of that partition becomes the group coordinator.
+
+For a consumer to remain a member of the group, it must periodically send heartbeats with a predefined interval to the coordinator. When the maximum amount of time without receiving a heartbeat is exceeded or the coordinator is notified of a consumer leaving the group, rebalancing is triggered, reassigning the partitions the consumer was responsible for to the remaining elements of its group.
+
+The same rebalancing is triggered when a consumer starts up and requests to join a group. Rebalancing is simply attempting to split the load as equally as possible between the active consumers in a group, which also means approximately assigning an equal amount of partitions to each consumer in the same group. 
+
+Depending on the chosen configuration for the parameter \texttt{auto.offset.reset}, when a consumer receives its assignment from the coordinator, if there are no committed offsets by the consumer group's id for the topic-partition pair, then this policy is selected to determine where to start consuming records from its partitions. If it is set to \texttt{earliest} it will start consuming from the first message in the partition, whereas set to \texttt{latest} it will start consuming from the last message appended to that partition's log.
+
+When data is consumed in batch, it can only be guaranteed that the data is read at least once. The reason why this is the case is due to the fact that if a consumer fails while processing the messages, before committing the offsets, the partition is reassigned and the same messages will be read again. 
+
+This implies the batch size is an important factor to take into consideration: the bigger the size, the more messages can be read more than once in cases of consumer failure.
+
+While rebalancing, it is important to note that the consumers are not capable of consuming data from the partitions being rebalanced, making it an expensive operation which is to be avoided. If a certain consumer stops unexpectedly, it is no longer consuming from its partitions, and the coordinator has to wait for as long as \texttt{session.timeout.ms} for it to trigger rebalancing. This is a configurable value, but there is of course a trade-off. The bigger the value set, the less rebalancing is performed, but it will also take the coordinator longer to determine whether a single consumer is unavailable before triggering a rebalance. 
+
+\section{Containers} \label{sec:COM}
+
+When internet services first started, it was common to have the services running on local hardware. To handle peak traffic, scaling was performed by purchasing more hardware, which would then become unused when the traffic was no longer as high \cite[Chapter~1]{smith2017docker}.
+
+Virtual Machines (VMs) became the next advance in this industry, and it allowed to use the resources of pieces of hardware more efficiently as multiple VMs could run on a single machine as long as there was space. This is when cloud service providers like Amazon, Google and Microsoft also started renting out VMs. In moments of peak traffic, a company could scale services in minutes, and there was no need to waste hardware resources with unused instances, therefore paying only for what is used.
+
+It became clear that Virtual Machines also came with disadvantages, as there was a considerable overhead of memory to support the operating system of this environment.
+
+Enter containers. Running instances could be done in a matter of seconds without the overhead of an operating system, which allows applications to run consistently in different environments as long as the containers are created resorting to the same image.
+
+As stated in \cite{DockerContainer}, an image is a bundle of code/software which contains all the dependencies and libraries a given instance might need to run reliably in different computing environments. Container images become containers on runtime.
+
+\subsection{Kubernetes} \label{subsec:kubernetes}
+
+Kubernetes works with a cluster of distributed nodes, that interact with one another to work as a single unit.
+
+This service allows for an automated distribution and scheduling of containerized application. The level of abstraction causes a deployment to have no ties to a specific machine.
+
+A kubernetes cluster is formed by 2 entities, the control plane, and nodes. The first is responsible for coordinating all activities in a cluster, such as scheduling, scaling and rolling out new updates of an application. The second, contains a process named kubelet, which manages the communication of the node with the control plane. There are additional tools like containerd or docker to allow the node to deploy containerized applications.
+
+``In practice, a node is simply a VM or a physical computer that serves as a worker machine in Kubernetes'' \cite{CreateKubeCluster}.
+
+As soon as the Kubernetes cluster is running, it is possible to deploy the containerized applications. This is performed by creating the Kubernetes Deployment configuration specifying the number of instances and the image(s) with which to create the instances, followed by sending it to the control plane. 
+
+At all times, there is a deployment controller that continuously monitors the instances. In the scenario the node running a given instance fails, the controller detects the failure and launches the same instance on another node that belongs to the cluster. This is a consequence of the control plane attempting to maintain the state of an application that was defined in the deployment configuration.
+
+Kubernetes offers a CLI, kubectl, which gives a user the possibility to communicate with the cluster locally. The communication is performed via the Kubernetes API, which is an API server located on the control plane. This server exposes an HTTP API, which allows differing entities to interact with it to query or even change API object's states \cite{KubernetesAPI}.
+
+The Pod is Kubernetes' atomic unit. When creating a deployment, it creates as many pods as specified in the \mintinline{sh}{replicas} value defined in the deployment configuration, which in turn holds the containers specified in the configuration as well under the \texttt{template} value. This is the template to be used when creating any pod that belongs to the deployment.
+
+\subsubsection{Autoscaling}
+
+As described in \cite{KubernetesAutoscaling}, the algorithm works in loop, constantly evalutaing the performance of the pods measuring the average CPU usage in the last minute. The control is performed by default every 30s, which can be modified by changing the value of:
+\begin{itemize}
+    \item \mintinline{sh}{--horizontal-pod-autoscaler-sync-period}.
+\end{itemize}
+
+The following equation determines the appropriate amount of pods for the average CPUUtilization to be below the target:
+\begin{equation}
+    numPods = ceil\bigg(\frac
+        {\sum_{p \in Deployment} CPUUtilization_p}
+        {Target}
+    \bigg)
+\end{equation}
+where $CPUUtilization_p$ is the average CPU utilization in the last minute of a pod $p$. 
+
+To reduce noise in the metrics, the autoscaler can only scale-up if there was no rescaling within the last 3 minutes. The same applies to scale-down but the waiting time is 5 minutes.
+
+Assuming a pod represents a Kafka consumer client, and a deployment a consumer group, to achieve maximum parallelism of consumption from a topic, the amount of pods in the deployment would be the same as the amount of partitions in the topic. Hence, when evaluating the performance of this deployment, specifically related to the usecase presented by the data-engineering team, where each consumer has to read messages from the topic and insert them into a GBQ table, what delays the message consumption from the topic, is the synchronous request made to BigQuery. Consequently, autoscaling cannot be performed on CPUUtilization, as it would not increase with the increase in lag of the current offset w.r.t. the last message inserted in the topic.
+
+Kubernetes Event Driven Autoscaling (KEDA), specifically provides a scaler which allows to increase the amount of consumers based on the average lag of a consumer group. Although this is definitely better than scaling based on the CPU usage, it still lacks granularity on evaluating the groups performance based on other metrics, providing as an example consumer group throughput and production throughput to the same topic. It also does not take into consideration the cost of releasing another instance, which will be one of the goals of the work developed throughout the thesis.
+
+\subsubsection{Kubernetes Operating Modes}
+
+When running Kubernetes, there are several alternatives. The first is to have the cluster run in bare metal. This is the option that allows most control over which type of node is added or removed from the cluster. 
+
+As soon as a node is manually added to the cluster, the control plane can start assigning deployment instances - or pods - to run in the node. When there is no longer any more space in the cluster to run other instances, more nodes have to be added to the cluster to allow the deployments to be correctly scheduled to maintain the state described in the deployment.
+
+With this type of configuration, the payment is usually associated with the nodes that are added to the cluster. This can represent renting out VMs, or it can also be the price of buying the actual physical hardware running the necessary software to be a part of the Kubernetes cluster.
+
+Another possibility, is to use some kind of cluster auto-management which is already included in a few cloud provider's Kubernetes Engine. Using as an example Google's Kubernetes Engine (GKE), there is a cluster mode of operation which is the autopilot, which manages the nodes within the cluster automatically without having to interfere manually with the cluster.
+
+This mode of operation allows the user to pay by pod instead of node \cite{GKEautopilot}, meaning that only the resources that are being used are being payed for, making it as efficient as it could be with regards to pricing. Autopilot allows a truly dynamic and hands-off experience when having to deal with dynamic scaling a certain deployment.
+
+
+\begin{comment}
+
+    \subsection{Deploying Containerized Applications on AWS}
+    
+    There are several possibilities to deploy a container in a cloud service provider. One of the options, is the native Elastic Container Service which is a powerful tool to easily deploy, manage and scale containerized applications, which also supports Docker containers. 
+    
+    Some important concepts are \cite{AmazonECSdocs}:
+    \begin{itemize}
+        \item task definition - Required to run Docker containers on ECS, this defines how the containers defined should run in its environment. Parameters defined in this file are: container image, CPU and memory to use with each task, networking, and others;
+        \item tasks - instances of a task definition;
+        \item services - Defines a state for a specified number of tasks. When a given task fails, then the service attempts to create a new task to maintain as many healthy tasks as specified in the service;
+        \item cluster - A logical grouping of tasks and services. These two entities run on machines that are registered to the cluster.
+    \end{itemize}
+    
+    This service also provides cluster autoscaling based on cluster usage.
+    
+    As an alternative, EKS is an integrated Kubernetes solution provided by AWS which provides a few more features compared to manually configuring a Kubernetes cluster. It is similar to ECS as it allows for dynamic autoscaling based on load and node health \cite{AmazonEKSdocs}. The remaining features of the service, are similar to what was explained in \ref{subsec:kubernetes}.
+    
+    EKS was the solution opted for, as it presents the most provider independent configurations.
+
+    \section{Optimization} \label{sec:Optimization} 
+    
+    A mathematical optimization problem, aims to maximize an objective function which depends on decision variables and subject to a combination of constraints. There are several classes of optimization problems, such as linear and non-linear optimization, but for the purpose of this thesis, only the former will be considered.
+    
+    A generalized definition of an optimization problem has the form: 
+    \begin{align} \label{eq:generalizedOptimization}
+        \min_{\boldsymbol x}\; & f(\boldsymbol{x}) \\
+        \mbox{subject to }   & g_{i}(\boldsymbol x) \leq 0      & \forall \; i \in 1,2,..., m
+    \end{align}
+    
+    where $f$ is the objective function and $g$ are functions associated to the inequality constraints, and $\boldsymbol{x}$ is a vector representing the decision variables.
+
+    \subsection{Linear Programming}
+    
+    Linear programming, is the special case where the objective and contraints are represented by functions that obey the following property \cite{boyd2004convex}:
+    \begin{equation}
+        f_i(\alpha x + \beta y) = \alpha f_i(x) + \beta f_i(y) 
+    \end{equation}
+    
+    The previous formulation in \ref{eq:generalizedOptimization}, when applied to this case and transforming it into the standard form \cite{hillier2012introduction}, becomes:
+    \begin{align}
+        &\max \; & c_1*x_1 + c_2*x_2 + ... c_n*x_n,\\
+        &\mbox{subject to }     & a_{i1}*x_1 + a_{i2}*x_2 + ... a_{i3}*x_n \leq b_i\; \forall \; i \in 1,2,..., m\\
+        &\mbox{and}\; & x_1, x_2, ..., x_n \geq 0
+    \end{align}
+    
+    A solution can then either be feasible, infeasible or unbounded.
+    
+    Integer linear programming is different to the previous cases as the decision variables are bounded to integer quantities \cite[Chapter~12]{hillier2012introduction}.
+    
+    An example application of this approach, is one that involves determining the amount of consumers in a consumer group to increase record consumption rate of a certain Kafka topic. The decision variable becomes the amount of consumers deployed and the objective function is to maximize the amount of messages being consumed. As a consumer is a non-divisible unit, this problem can only be solved by Integer Linear Programming.
+    
+    \subsection{Multi-objective Optimization Problems}
+    
+    When formulating an optimization problem, it is possible that the aim is not to optimize a single objective function, but multiple.
+    
+    One of the ways to approach the problem is to combine the multiple objective functions into a single objective to then maximize/minimize. The downside to this approach is the fact that a relative importance has to be given to each individual objective, which might not always be a simple comparison.
+    
+    In \cite{nardelli2018multi}, an algorithm (Adaptive Container Deployment) is specified as an Integer Linear Programming Problem which aims to optimize container deployment goals by acquiring or releasing geo-distributed computing resources.
+    
+    To evaluate a given objective function, the authors create two metrics, deployment cost and adaptation cost. The first, is responsible for containing information w.r.t. the amount of virtual machines that are available on a cluster, whereas the second holds the cost related to the time it takes to deploy all application components. For this last metric, not only is the time a VM takes to boot taken into consideration, but also the time it takes to download a given container image (depends on the location) and the time a container takes to spawn. 
+    
+    As can be verified, each objective could be optimized with regards to itself, but considering it is a multi-objective problem the resulting objective function is a combination of each metric, by performing a weighted sum of the normalized deployment and adaptation costs.
+    
+    Another approach is to use linear goal programming, which allows to formulate a multi-objective problem into a standard linear programming problem by setting as constraints the target values for each of the multi-objective functions \cite[Chapter~4]{hillier2012introduction}. Although it might be a good approach to simplify a given problem, it requires a user to define a specific numeric goal for each of the objectives.
+    
+    Lastly, the pareto solution is another approach to multi-objective problems (MOP). This approach gathers the pareto front which consists of all optimal non-dominated solutions to a MOP. A solution $y$ is considered to dominate a solution $z$ if the evaluation of each objective function at y, is considered to be more optimal than when evaluated at $z$. In turn, a solution $y$ is considered to non-dominated by a solution $z$ when both are better than the other at one of the objective functions to be evaluated. These are the solutions that will make out the pareto front, and represents a set of trade-off solutions among the different objectives \cite{durillo2014multi}.
+    
+    Contrary to the previous alternatives, the pareto front does not require a user to determine preference beforehand, and provides with a tool precisely for preference discovery. To measure the quality of the pareto front, it is common to use a hypervolume measure, which determines the accuracy and diversity of a set of points. It is evaluated w.r.t. a single point, which is usually chosen as the maximum value of each objective function, and is more formally defined as the union of hypervolumes defined by each box to be defined between a point in the set and the reference point. This measure is more formally defined in \cite{guerreiro2020hypervolume}.
+
+\end{comment}
+
+

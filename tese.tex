@@ -110,13 +110,13 @@
   \include{acknows}  % the acknowledgments
   \include{quote}    % initial quotation if desired
   \cleardoublepage
-  \pdfbookmark[0]{Conteúdo}{contents}
+  \pdfbookmark[0]{Contents}{contents}
   \tableofcontents
   \cleardoublepage
-  \pdfbookmark[0]{Lista de Figuras}{figures}
+  \pdfbookmark[0]{List of Figures}{figures}
   \listoffigures
   \cleardoublepage
-  \pdfbookmark[0]{Lista de Tabelas}{tables}
+  \pdfbookmark[0]{List of Tables}{tables}
   \listoftables
   \include{abbrevs}  % the list of abbreviations used
 \end{Prolog}
@@ -127,7 +127,6 @@
 
 \StartBody
 
-%% TIP: use a separate file for each chapter
 \include{chapter_introduction} 
 \include{chapter_bpp}
 \include{chapter_infrastructure}
@@ -139,17 +138,8 @@
 \appendix
 \include{appendix1}
 
-%%----------------------------------------
-%% Final materials
-%%----------------------------------------
-
-%% Bibliography
-%% Comment the next command if BibTeX file not used, 
-%% Assumes that bibliography is in ``myrefs.bib''
-
-%\PrintBib{myrefs}
-
 \printbibliography
+
 %% Index
 %% Uncomment next command if index is required, 
 %% don't forget to run ``makeindex tese'' command

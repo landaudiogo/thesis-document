@@ -7,7 +7,7 @@
 
 ## Basename for result
 #TARGET=tese
-TARGET=thesis
+TARGET=tese
 
 ## programs
 LATEX=latex
@@ -27,9 +27,17 @@ PAPERSIZE=a4
 ## prefer pdflatex for bibtex
 LATEXBIB=$(PDFLATEX)
 
+## READER
+PDFREADER := AcroRd32.exe
+
+all: latexmk read
+
 ## make
 latexmk:
-	pdflatex --shell-escape tese
+	pdflatex --shell-escape $(TARGET)
+
+read: 
+	@$(PDFREADER) $(TARGET).pdf || echo "$(PDFREADER) closed"
 
 ## Extensions
 EXTS=aux toc idx ind ilg log out lof lot lol bbl blg brf tdo fls nav snm fdb_latexmk vrb
@@ -38,6 +46,8 @@ EXTS=aux toc idx ind ilg log out lof lot lol bbl blg brf tdo fls nav snm fdb_lat
 clean:
 	for EXT in ${EXTS}; do \
 	  find `pwd` -name \*\.$${EXT} -exec rm -v \{\} \; ; done
+
+
 
 ## misc
 .SUFFIXES: .tex .aux .toc .lof .lot .log .dvi .pdf .bib .bbl
