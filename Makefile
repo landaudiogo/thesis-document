@@ -33,9 +33,11 @@ PDFREADER := AcroRd32.exe
 all: latexmk read
 
 ## make
-latexmk:
+latexmk: 
 	pdflatex --shell-escape $(TARGET)
-
+	biber $(TARGET)
+	pdflatex --shell-escape $(TARGET)
+	
 read: 
 	@$(PDFREADER) $(TARGET).pdf || echo "$(PDFREADER) closed"
 
