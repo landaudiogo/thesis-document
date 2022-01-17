@@ -12,7 +12,7 @@ Formally, the problem can be summarized as the following optimization problem:
 \label{BPP model}
     &\min &&\sum_{i \in B} y_i && \\
     &\text{subject to} \quad
-                && \sum_{j \in L} w_j x_{ij} \leq C. \quad          && \forall \; i \in B \label{opt:c1}\\
+                && \sum_{j \in L} w_j x_{ij} \leq C y_i. \quad          && \forall \; i \in B \label{opt:c1}\\
     &           && \sum_{i \in B} x_{ij} = 1, \quad                 && \forall \; j \in L \label{opt:c2} \\
     &           && y_i \in \{0, 1\}                                 && \forall \; i \in B \\
     &           && x_{ij} \in \{0,1\}                               && \forall \; i \in B, j \in L
