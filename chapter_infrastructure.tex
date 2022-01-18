@@ -364,45 +364,38 @@ allow the node to deploy containerized applications.``In practice, a node is
 simply a VM or a physical computer that serves as a worker machine in
 Kubernetes'' \cite{CreateKubeCluster}.
 
+To change the Kubernetes cluster's state, the communication is performed via the
+\textbf{Kubernetes API} which is at the core of the control plane. This HTTP
+API, allows differing entities to communicate with the cluster and manage
+kubernetes objects \cite{KubernetesAPI}. Within this thesis' context, to manage
+a consumer group, the controller described in section \ref{component:controller}
+leverages this API to manage deployment and volume resources.
+
 As soon as the Kubernetes cluster is running, it is possible to deploy the
 containerized applications. This can be done using one of the many resource
-types, such as a \textbf{Deployment}. It is within this type of resource that we can
+types, such as a Deployment. It is within this type of resource that we can
 specify how our applications will run, and how many instances of the application
 we want to make available. Within the deployments \lstinline{spec.replicas} is
-where we define the number of pods we want the deployment to contain, and within
+where the number of pods for this resource is defined, whereas
 \lstinline{spec.template} is where the Pod resource is specified for this
-deployment. A \textbf{Pod} is Kubernetes smallest deployable resource, and it is an instance
-that runs within a single Node. It can run one or more containers that are
-created using their respective images, which share network and volume resources.
+deployment. 
 
-When up- or down-scaling the deployment, \lstinline{spec.template} is always
-used to determine the Pod instance to manage.  Within the deployment's spec
-field, which specifies the resource's state,
-\lstinline{spec.selector.matchLabels} and
+A \textbf{Pod} is Kubernetes smallest deployable resource, and it is
+an instance that runs within a single Node. It can run one or more containers
+that are created using their respective images, which share network and volume
+resources. As for a \textbf{Deployment}, it is a logical grouping of pods, which
+contains information about the group's state. A DeploymentController monitors
+the group, so as to change its actual state to reach the desired state specified
+in the deployment's configuration.
+
+When up- or down-scaling the deployment, \lstinline{spec.template} is used to
+determine the Pod template to manage. Within the deployment's spec field, which
+specifies its desired state, \lstinline{spec.selector.matchLabels} and
 \lstinline{spec.template.metadata.labels} are what allows a deployment to know
 which pods to manage. The pods are tagged with the label specified by
 \lstinline{spec.template.metadata.labels} and the deployment searches for the
-pods have the labels specified in \lstinline{spec.selector.matchLabels}. 
-At all times, there is a deployment controller that continuously monitors the
-instances. 
-
-In the scenario the node running a given instance fails, the
-controller detects the failure and launches the same instance on another node
-that belongs to the cluster. This is a consequence of the control plane
-attempting to maintain the state of an application that was defined in the
-deployment configuration.
-
-Kubernetes offers a command line interface (CLI), kubectl, which gives a user the possibility to
-communicate with the cluster locally. The communication is performed via the
-Kubernetes API, which is an API server located on the control plane. This server
-exposes an HTTP API, which allows differing entities to interact with it to
-query or even change API object's states \cite{KubernetesAPI}. 
-
-A clusters API server is the core of the control plane. This HTTP API, allows
-differing entities to communicate with the cluster and manage kubernetes
-objects. To manage a consumer group, the controller described in section
-\ref{component:controller} leverages this API to create deployment and volume
-resources.
+pods that are tagged with the labels specified in
+\lstinline{spec.selector.matchLabels}.
 
 \subsection{Autoscaling}
 
