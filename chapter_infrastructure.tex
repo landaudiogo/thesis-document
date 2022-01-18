@@ -351,11 +351,9 @@ on runtime.
 \section{Kubernetes} \label{subsec:kubernetes}
 
 Kubernetes works with a cluster of distributed nodes, that interact with one
-another to work as a single unit.
-
-This service allows for an automated distribution and scheduling of
-containerized applications. The level of abstraction causes a deployment to have
-no ties to a specific machine.
+another to work as a single unit. This service allows for an automated
+distribution and scheduling of containerized applications. The level of
+abstraction causes a deployment to have no ties to a specific machine.
 
 A kubernetes cluster is formed by 2 entities, the control plane, and nodes. The
 first is responsible for coordinating all activities in a cluster, such as
@@ -368,37 +366,37 @@ Kubernetes'' \cite{CreateKubeCluster}.
 
 As soon as the Kubernetes cluster is running, it is possible to deploy the
 containerized applications. This can be done using one of the many resource
-types, such as a Deployment. It is within this type of resource that we can
+types, such as a \textbf{Deployment}. It is within this type of resource that we can
 specify how our applications will run, and how many instances of the application
 we want to make available. Within the deployments \lstinline{spec.replicas} is
 where we define the number of pods we want the deployment to contain, and within
 \lstinline{spec.template} is where the Pod resource is specified for this
-deployment. When up- or down-scaling the deployment, \lstinline{spec.template}
-is always used to determine the Pod instance to manage.
+deployment. A \textbf{Pod} is Kubernetes smallest deployable resource, and it is an instance
+that runs within a single Node. It can run one or more containers that are
+created using their respective images, which share network and volume resources.
 
-Within the deployment's spec field, which specifies the resource's state,
+When up- or down-scaling the deployment, \lstinline{spec.template} is always
+used to determine the Pod instance to manage.  Within the deployment's spec
+field, which specifies the resource's state,
 \lstinline{spec.selector.matchLabels} and
 \lstinline{spec.template.metadata.labels} are what allows a deployment to know
 which pods to manage. The pods are tagged with the label specified by
 \lstinline{spec.template.metadata.labels} and the deployment searches for the
 pods have the labels specified in \lstinline{spec.selector.matchLabels}. 
-
-A Pod resource is Kubernetes smallest deployable resource, and it is an instance
-that runs within a single Node. It can run one or more containers that are
-created using their respective images, which share network and volume resources.
-
 At all times, there is a deployment controller that continuously monitors the
-instances. In the scenario the node running a given instance fails, the
+instances. 
+
+In the scenario the node running a given instance fails, the
 controller detects the failure and launches the same instance on another node
 that belongs to the cluster. This is a consequence of the control plane
 attempting to maintain the state of an application that was defined in the
 deployment configuration.
 
-Kubernetes offers a CLI, kubectl, which gives a user the possibility to
+Kubernetes offers a command line interface (CLI), kubectl, which gives a user the possibility to
 communicate with the cluster locally. The communication is performed via the
 Kubernetes API, which is an API server located on the control plane. This server
 exposes an HTTP API, which allows differing entities to interact with it to
-query or even change API object's states \cite{KubernetesAPI}.
+query or even change API object's states \cite{KubernetesAPI}. 
 
 A clusters API server is the core of the control plane. This HTTP API, allows
 differing entities to communicate with the cluster and manage kubernetes
