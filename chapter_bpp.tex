@@ -1,37 +1,52 @@
 \chapter{Bin Packing Problem} \label{chap:literature review}
 
-The bin packing problem (BPP), as defined in the literature, is a combinatorial optimization problem that has been extensively studied since the thirties. Due to its NP-hard nature, on the practical side, several heuristic and metaheuristic algorithms have been proposed, as well Integer Linear Programming to determine the optimal solution. The former benefits from lower time execution to reach a solution which may not be optimal, whereas the latter provides the optimal solution, but requires more time to do so.
+The bin packing problem (BPP), as defined in the literature, is a combinatorial
+optimization problem that has been extensively studied since the thirties. Due
+to its NP-hard nature, on the practical side, several heuristic and
+metaheuristic algorithms have been proposed, as well Integer Linear Programming
+to determine the optimal solution. The former benefits from lower time execution
+to reach a solution which may not be optimal, whereas the latter provides the
+optimal solution, but requires more time to do so.
 
-As specified in \cite{wascher2007improved}, there are several categories with which to define a BPP. The problem at hand is the one of a Single Bin Size Bin Packing Problem (SBSBPP).
+As specified in \cite{wascher2007improved}, there are several categories with
+which to define a BPP. The problem at hand is the one of a Single Bin Size Bin
+Packing Problem (SBSBPP).
 
-As described in \cite{delorme2016bin}, an informal definition of this BPP, is: provided there are n items, each with a given weight \( w_j  \, (j = 1, ..., n) \) and an unlimited amount of bins with equal capacity \( C \), the goal is to arrange the n items in such a way that the capacity of each bin is not exceeded, and to determine the minimum amount of bins required to hold the n items.
+As described in \cite{delorme2016bin}, an informal definition of this BPP, is:
+provided there are n items, each with a given weight \( w_j  \, (j = 1, ..., n)
+\) and an unlimited amount of bins with equal capacity \( C \), the goal is to
+arrange the n items in such a way that the capacity of each bin is not exceeded,
+and to determine the minimum amount of bins required to hold the n items.
 
 Formally, the problem can be summarized as the following optimization problem:
-
 \begin{alignat}{3}
 \label{BPP model}
-    &\min &&\sum_{i \in B} y_i && \\
+    &\min       &&\sum_{i \in B} y_i && \\
     &\text{subject to} \quad
-                && \sum_{j \in L} w_j x_{ij} \leq C y_i. \quad          && \forall \; i \in B \label{opt:c1}\\
+                && \sum_{j \in L} w_j x_{ij} \leq C y_i. \quad      && \forall \; i \in B \label{opt:c1} \\
     &           && \sum_{i \in B} x_{ij} = 1, \quad                 && \forall \; j \in L \label{opt:c2} \\
     &           && y_i \in \{0, 1\}                                 && \forall \; i \in B \\
     &           && x_{ij} \in \{0,1\}                               && \forall \; i \in B, j \in L
 \end{alignat}
+where set $B$ corresponds to the available bins, and $L$ as the list of items to
+be arranged into different bins. $x_{ij}$ indicates whether an item $j$ is
+packed in the bin $i$, whereas $y_i$ informs whether bin $i$ is used. 
 
-$x_{ij}$ represents whether an item $j$ is packed in the bin $i$, whereas $y_i$ determines whether bin $i$ is used. As for the constraints, \ref{opt:c1} assures that the sum of the items in a given bin, does not exceed it's capacity, and \ref{opt:c2} makes sure that every item is assigned a bin. 
+As for the constraints, \ref{opt:c1} assures that the sum of the items in a
+created bin, does not exceed it's capacity, and \ref{opt:c2} makes sure that every
+item is assigned a bin. 
 
-Set $B$ corresponds to the available bins, and $L$ as the list of items to be arranged into different bins. 
-
-It is also common to represent the bin-packing problem in its normalized version, where all the weights are down-scaled by the total capacity of a bin, and the capacity of each bin is $1$. This implies modifying \ref{opt:c1} into:
+It is also common to represent the bin-packing problem in its normalized
+version, where all the weights are down-scaled by the total capacity of a bin,
+and the capacity of each bin is $1$. This implies modifying \ref{opt:c1} into:
 
 \begin{equation}
-    \sum_{j \in L} \hat w_j x_{ij} \leq 1. \quad \forall \; i \in B,
+    \sum_{j \in L} \hat w_j x_{ij} \leq y_i. \quad \forall \; i \in B,
 \end{equation}
-where \(\hat w_j\) represents the normalized weight of an item \( w_j/C \).
+where \(\hat w_j\) represents the normalized weight of an item ($w_j/C$).
 
-This approach generalizes the analysis of the bin packing approach, and unless stated otherwise, it will be the model used throughout this analysis. 
-
-Another important note, is that "weight" and "size" will be used interchangeably when analyzing the following algorithms. 
+Throughout the following anaylsis, both "weight" and "size" will be used
+interchangeably, and the normalized BPP model will be employed.
 
 \subsection{Linear Programming}
 
