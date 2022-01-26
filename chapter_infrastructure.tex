@@ -456,23 +456,23 @@ As soon as a node is manually added to the cluster, the control plane can start
 assigning pods to run in the node. When there is no longer any more space in the
 cluster to run other instances, more nodes have to be added to the cluster to
 allow the deployments to be correctly scheduled to maintain the state described
-in the deployment.
+in the manifest.
 
-With this type of configuration, the operational cost is usually associated with
-the nodes that are added to the cluster, which can represent renting out VMs or
-buying the actual physical hardware that runs the necessary software to be a part
-of the Kubernetes cluster.
+With this type of configuration, the operational cost is associated with the
+nodes that are added to the cluster, which can represent renting out VMs or
+buying the actual physical hardware that runs the necessary software to be a
+part of the Kubernetes cluster.
 
-Another option is to use some kind of cluster auto-management which is
-already included in a few cloud provider's Kubernetes Engine. Using as an
-example Google's Kubernetes Engine (GKE), there is a cluster mode of operation
-(autopilot), that manages the nodes within the cluster automatically
-without having to manually interact with the cluster. This means that if the
-cluster does not have enough resources to maintain the state of the objects that
-are within the cluster, a node is automatically added, and the
-instances that require node resources can now be scheduled.
+Another option is to use some kind of cluster auto-management which is already
+included in a few cloud provider's services. Both Google and Amazon provide
+their own Kubernetes engine with this optional mode of operation, Google
+Kubernetes Engine (GKE) autopilot and Elastic Kubernetes Service (EKS) fargate
+respectively, which automatically manage the nodes within the cluster without
+having to manually interact with it. This means that if the cluster does not
+have enough resources to maintain the state of the objects that have been
+defined, a node is automatically added, and the instances that require node
+resources can now be scheduled.
 
 This mode of operation allows the user to pay by pod instead of node
-\cite{GKEautopilot}, meaning that only the resources that are being used are
-being payed for. Autopilot allows a truly dynamic and hands-off experience when
-dynamically scaling a certain deployment.
+\cite{GKEautopilot, EKSfargate}, and provides a truly dynamic and hands-off
+experience when dynamically scaling a certain deployment.
