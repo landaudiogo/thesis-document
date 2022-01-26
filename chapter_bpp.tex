@@ -20,13 +20,18 @@ and to determine the minimum amount of bins required to hold the n items.
 
 Formally, the problem can be summarized as the following optimization problem:
 \begin{alignat}{3}
-\label{BPP model}
-    &\min       &&\sum_{i \in B} y_i && \\
+    &\min       
+        &&\sum_{i \in B} y_i 
+            && \\
     &\text{subject to} \quad
-                && \sum_{j \in L} w_j \cdot x_{ij} \leq C \cdot y_i. \quad      && \forall \; i \in B \label{opt:c1} \\
-    &           && \sum_{i \in B} x_{ij} = 1, \quad                 && \forall \; j \in L \label{opt:c2} \\
-    &           && y_i \in \{0, 1\}                                 && \forall \; i \in B \\
-    &           && x_{ij} \in \{0,1\}                               && \forall \; i \in B, j \in L
+        && \sum_{j \in L} w_j \cdot x_{ij} \leq C \cdot y_i. \quad      
+            && \forall \; i \in B \label{opt:c1} \\
+    &   && \sum_{i \in B} x_{ij} = 1, \quad                 
+            && \forall \; j \in L \label{opt:c2} \\
+    &   && y_i \in \{0, 1\}                                 
+            && \forall \; i \in B \\
+    &   && x_{ij} \in \{0,1\}                               
+            && \forall \; i \in B, j \in L
 \end{alignat}
 where set $B$ corresponds to the available bins, and $L$ as the list of items to
 be arranged into different bins. $x_{ij}$ indicates whether an item $j$ is
@@ -47,24 +52,10 @@ where \(\hat w_j\) represents the normalized weight of an item ($w_j/C$).
 Throughout the following anaylsis, both "weight" and "size" will be used
 interchangeably, and the normalized BPP model will be employed.
 
-Due to the dynamic nature of the problem presented in chapter \ref{chap:intro},
-the items change in size depending on the measurement performed at time instant
-$t$. Consequently, constraint \ref{opt:c1} is remodeled to take the time instant
-$t$ at which the algorithm is to be executed into account.
-\begin{alignat}{3}
-\label{BPP model}
-    &\min       &&\sum_{i \in B} y_i && \\
-    &\text{subject to} \quad
-                && \sum_{j \in L} \hat w_j(t) \cdot x_{ij} \leq y_i. \quad      && \forall \; i \in B \label{time_variable:c1} \\
-    &           && \sum_{i \in B} x_{ij} = 1, \quad                             && \forall \; j \in L \\
-    &           && y_i \in \{0, 1\}                                             && \forall \; i \in B \\
-    &           && x_{ij} \in \{0,1\}                                           && \forall \; i \in B, j \in L
-\end{alignat}
-
 \section{Linear Programming}
 
 When interested in achieving the optimal solution, the textbook implementation
-of the BPP model presented by equation (\ref{BPP model}) is not computationally
+of the BPP model presented by equation \ref{BPP model} is not computationally
 efficient. A common approach is to study the Upper and Lower Bounds of the
 Algorithm, and to add valid additional constraints to restrict the search space.
 
@@ -76,7 +67,7 @@ Provided two time instants, $t_1$ (the last instant at which the item
 assignment was computed) and $t_2$ (the current time instant at which the
 assignment is to be re-computed), given that the items' sizes change between
 $t_1$ and $t_2$, it is possible that the configuration computed in $t_1$ no longer
-complies with constraint \ref{time_variable:c1}. This reinforces the fact that
+complies with constraint \ref{opt:c1}. This reinforces the fact that
 the algorithm has to be re-computed at $t_2$. Considering the NP-hard nature of
 the problem, and the fact that the ILP problem is only interested in minimizing
 the amount of bins disregarding an item's previous assignment, this
@@ -87,30 +78,47 @@ bounded time.
 \section{Approximation Algorithms and Heuristics}
 \label{sub:Approximation Algorithms and Heuristics}
 
-During this section, the method presented in \cite{coffman2013bin} to classify a BPP problem will be employed throughout the analysis of the algorithms.
+In \cite{coffman2013bin} a method is presented to classify the BPP problem,
+which will be used throughout this section. During an algorithm's execution,
+a bin can find itself either \textit{open} or \textit{closed}. In the former,
+the bin can still be used to add additional items, whereas in the latter, it is
+no longer available and has already been used.  
 
-There are 2 possible states a bin can find itself while executing the algorithm, \textit{open} or \textit{closed}. In the former, the bin can still be used to add additional items, whereas in the latter, they are no longer available and have already been used.
+In the literature, it is common to present a parameter $\alpha$ which
+indicates the size limit of the weights within the list $L$, which varies
+between $(0, 1]$. This thesis studies the problem where the item's size is
+simply limited to the size of the bin, and therefore $\alpha = 1$.
 
-In the literature, it is common to present a parameter $\alpha$ which indicates the size limit of the weights within the list $L$, which can vary between \( (0, 1] \). Considering the problem that will be presented in \ref{chap:chap3} does not limit the size of the weights - other than being smaller or equal to the bins capacity -, we will consider $\alpha = 1$. 
-
-To compare the performance between algorithms, the Asymptotic Performance Ratio (APR), is what will be employed throughout this chapter. $A(L)$ denotes the amount of bins a certain algorithm makes use of for a configuration of items $L$. $OPT(L)$ is used to represent the amount of bins required to achieve the optimal solution. Defining $\Omega$ as the set of all possible lists, each with a different arrangement of their items, given 
-
+To compare the performance between algorithms, the Asymptotic Performance Ratio
+(APR), is what will be employed throughout this section. $A(L)$ denotes the
+amount of bins a certain algorithm makes use of for a configuration of items
+$L$. $OPT(L)$ is used to represent the amount of bins required to achieve the
+optimal solution. Defining $\Omega$ as the set of all possible lists, each with
+a different arrangement of their items, given
 \begin{equation}
-    R_A (k) = \sup_{L \in \Omega} \left \{ \frac{A(L)}{k} : k = OPT(L) \right \}
+    R_A (k) = \sup_{L \in \Omega} \left \{ \frac{A(L)}{k} : k = OPT(L) \right \},
 \end{equation}
-the APR is
+the APR is defined as
 \begin{equation}
     R_A^\infty = \limsup_{k \to \infty} R_A(k).
 \end{equation}
 
-Algorithms can be classified into several classes, as clearly specified in \cite{coffman2013bin}, but the only classes that are of interest for this problem are:
+Despite the mulititude of classes presented in \cite{coffman2013bin}, the only
+classes of problems that are of interest for this problem are: 
 \begin{enumerate}
-    \item online - Algorithms that have no holistic view over any other item in the list except the one it is currently assigning a bin to. It is also a requirement that a bin is assigned to the item as soon as it is analyzed.
-    \item bounded-space - Sub-class of online algorithms, where the amount of bins open at a single instance is limited by a constant provided prior to its execution.
-    \item offline - The algorithm is aware of all the items in the list before assigning bins to each item, and so their ordering does not directly impact the outcome as it is not necessary to respect the list's initial order.
+    \item online - Algorithms that have no holistic view over any other item in
+        the list except the one it is currently assigning a bin to. It is also a
+        requirement that a bin is assigned to the item as soon as it is
+        analyzed.
+    \item bounded-space - The amount of bins open at a single instance is
+        limited by a constant provided prior to its execution.
+    \item offline - The algorithm is aware of all the items in the list before
+        assigning bins to each item, and so their ordering does not directly
+        impact the outcome as it is not necessary to respect the list's initial
+        order.
 \end{enumerate}
 
-\subsubsection{Online Algorithms}
+\subsection{Online Algorithms}
 
 As previously mentioned in \ref{sub:Approximation Algorithms and Heuristics}, without an overview of all the items within a list, whenever an item is analyzed it has to be assigned a bin. This also implies that the bin in which the current item will be inserted is a function of the weights of all the preceding items in the list.
 
@@ -168,7 +176,7 @@ Due to the constraints presented in the $AAF$ class, an improvement for the WF a
     R_{AWF}^\infty = R_{FF}^\infty = \frac{17}{10}.
 \end{equation}
 
-\subsubsection{Bounded-space} 
+\subsection{Bounded-space} 
 
 Bounded-space algorithms have a predefined limit on the amount of bins that are allowed to be open at a given instance, which will be defined as $k$. It is also a subclass of the online algorithms.
 
@@ -232,7 +240,7 @@ Posterior to this technique being presented, it was clear that the reservation t
 
 
 
-\subsubsection{Offline Algorithms}
+\subsection{Offline Algorithms}
 
 Comparing with the previous section, offline algorithms have the added benefit that all items are known prior to its execution. As long as the list of items remains the same, items can be grouped, sorted or anything that might be convenient for the algorithm that is going to execute over the list of items. 
 
@@ -286,6 +294,27 @@ After doing so, the algorithm then performs the following five steps:
 
 
 \section{Conclusion}
+
+Due to the dynamic nature of the problem presented in chapter \ref{chap:intro},
+the items change in size depending on the measurement performed at time instant
+$t$. Consequently, constraint \ref{opt:c1} is remodeled to take the time instant
+$t$ at which the algorithm is to be executed into account.
+\begin{alignat}{3}
+\label{BPP model}
+    &\min       
+        &&\sum_{i \in B} y_i 
+            && \\
+    &\text{subject to} \quad
+        && \sum_{j \in L} \hat w_j(t) \cdot x_{ij} \leq y_i. \quad      
+            && \forall \; i \in B \\
+    &   && \sum_{i \in B} x_{ij} = 1, \quad                             
+            && \forall \; j \in L \\
+    &   && y_i \in \{0, 1\}                                             
+            && \forall \; i \in B \\
+    &   && x_{ij} \in \{0,1\}                                           
+            && \forall \; i \in B, j \in L
+\end{alignat}
+
 
 As presented throughout this chapter, the work that will be developed within this context involves several technologies that are constantly evolving.
 
