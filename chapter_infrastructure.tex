@@ -388,6 +388,7 @@ contains information about the group's state. A DeploymentController monitors
 the group, so as to change its actual state to reach the desired state specified
 in the deployment's configuration.
 
+\begin{sloppypar}
 When up- or down-scaling the deployment, \lstinline{spec.template} is used to
 determine the Pod template to manage. Within the deployment's spec field, which
 specifies its desired state, \lstinline{spec.selector.matchLabels} and
@@ -396,46 +397,54 @@ which pods to manage. The pods are tagged with the label specified by
 \lstinline{spec.template.metadata.labels} and the deployment searches for the
 pods that are tagged with the labels specified in
 \lstinline{spec.selector.matchLabels}.
+\end{sloppypar}
 
 \subsection{Autoscaling}
 
+When scaling a deployment, Kubernetes exposes the HorizontalPodAutoscaler
+resource that controls a workload resource such as a Deployment to match the
+demand. The autoscaler continuosly monitors CPU, memory or other custom metrics,
+to determine the amount of instances required to match the demand.
+
+\begin{sloppypar}
 As described in \cite{KubernetesAutoscaling}, the algorithm works in loop,
-constantly evaluating the performance of the pods measuring the average CPU
-usage in the last minute. The control is performed by default every 30s, which
-can be modified by changing the value of
+constantly evaluating the performance of the pods by measuring the selected
+metric's average value for the last minute. The control is performed by default
+every 30s, although it can be modified by changing the value of
 \lstinline{horizontal-pod-autoscaler-sync-period}.
+\end{sloppypar}
 
 The following equation determines the appropriate amount of pods, so as to have
-the average $CPUUtilization$ for the pods within a deployment below the target:
+the average value for the metric within a deployment below the defined target.
 \begin{equation}
     numPods = ceil\bigg(\frac
-        {\sum_{p \in Deployment} CPUUtilization_p}
+        {\sum_{p \in Deployment} metric_p}
         {Target}
     \bigg)
 \end{equation}
-where $CPUUtilization_p$ is the average CPU utilization in the last minute of a
-pod $p$. 
+where $metric_p$ is the average value of the metric to control in the last
+minute of a pod $p$. 
 
-To reduce noise in the metrics, the autoscaler can only scale-up if there was no
-rescaling within the last 3 minutes. The same applies to scale-down but the
-waiting time is 5 minutes.
+To reduce noise when modifying the workload resource, the autoscaler can only
+scale-up if there was no rescaling within the last 3 minutes. The same applies
+to scale-down except that the waiting time is 5 minutes.
 
 Within the context of the problem presented in section \ref{chap:intro}, if a
 pod represents a consumer and a deployment a consumer group, the metric on
-which to base the autoscaling cannot be the deployment's average CPU
+which to base the autoscaling cannot be the deployment's average CPU or memory
 utilization, as the process shown in figure \ref{fig:problem_context} utilizes
 more network than processing resources. 
 
 Kubernetes Event Driven Autoscaling (KEDA), provides a Kafka Consumer Group
 scaler which allows to increase the amount of consumers based on the average lag
-of a consumer group. Although this is definitely better than scaling based on
+of a consumer group \cite{KEDA}. Although this is definitely better than scaling based on
 the CPU usage, it still lacks granularity on evaluating the groups performance
 based on other metrics, providing as an example, consumption and production rate
 of a partition. The load is also distributed between the consumer instances
-using the strategy mentioned in section \ref{sec:kafka_consumer_group}, where
-the aim is to assign approximately the same amount of partitions to each
-consumer within a group. Since the speed of each partition to be assigned is not
-the same, this is does not equally split the load between the consumers.
+using the strategy mentioned in section \ref{sec:kafka_consumer_group}, which
+assigns approximately the same amount of partitions to each consumer within a
+group. Since the speed of each partition to be assigned is not the same, this is
+does not equally split the load between the consumers.
 
 \subsection{Kubernetes Operating Modes}
 
