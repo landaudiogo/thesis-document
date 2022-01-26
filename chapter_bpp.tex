@@ -23,7 +23,7 @@ Formally, the problem can be summarized as the following optimization problem:
 \label{BPP model}
     &\min       &&\sum_{i \in B} y_i && \\
     &\text{subject to} \quad
-                && \sum_{j \in L} w_j x_{ij} \leq C y_i. \quad      && \forall \; i \in B \label{opt:c1} \\
+                && \sum_{j \in L} w_j \cdot x_{ij} \leq C \cdot y_i. \quad      && \forall \; i \in B \label{opt:c1} \\
     &           && \sum_{i \in B} x_{ij} = 1, \quad                 && \forall \; j \in L \label{opt:c2} \\
     &           && y_i \in \{0, 1\}                                 && \forall \; i \in B \\
     &           && x_{ij} \in \{0,1\}                               && \forall \; i \in B, j \in L
@@ -44,19 +44,49 @@ and the capacity of each bin is $1$. This implies modifying \ref{opt:c1} into:
     \sum_{j \in L} \hat w_j x_{ij} \leq y_i. \quad \forall \; i \in B,
 \end{equation}
 where \(\hat w_j\) represents the normalized weight of an item ($w_j/C$).
-
 Throughout the following anaylsis, both "weight" and "size" will be used
 interchangeably, and the normalized BPP model will be employed.
 
-\subsection{Linear Programming}
+Due to the dynamic nature of the problem presented in chapter \ref{chap:intro},
+the items change in size depending on the measurement performed at time instant
+$t$. Consequently, the BPP is remodeled to take $t$ into account.
+\begin{alignat}{3}
+\label{time_variable_bpp}
+    &\min       &&\sum_{i \in B} y_i && \\
+    &\text{subject to} \quad
+                && \sum_{j \in L} \hat w_j(t) \cdot x_{ij} \leq y_i. \quad      && \forall \; i \in B \label{opt:c1} \\
+    &           && \sum_{i \in B} x_{ij} = 1, \quad                 && \forall \; j \in L \label{opt:c2} \\
+    &           && y_i \in \{0, 1\}                                 && \forall \; i \in B \\
+    &           && x_{ij} \in \{0,1\}                               && \forall \; i \in B, j \in L
+\end{alignat}
 
-When interested in achieving the optimal solution, the textbook implementation of the BPP model presented in (\ref{BPP model}) is not computationally efficient. A common approach is to study the Upper and Lower Bounds of the Algorithm, and to add valid additional constraints to restrict the search space.
+\section{Linear Programming}
 
-In \cite{delorme2016bin}, there is an extensive review on the state of the art algorithms that have been developed to solve the ILP problem, comparing several models and their efficiency when solving the same set of problems. 
+When interested in achieving the optimal solution, the textbook implementation
+of the BPP model presented by equation (\ref{BPP model}) is not computationally
+efficient. A common approach is to study the Upper and Lower Bounds of the
+Algorithm, and to add valid additional constraints to restrict the search space.
 
-Due to the dynamic nature of the problem that will be further described in \ref{chap:chap3}, when solving the BPP, there will already exist a given arrangement as for which bin each item is assigned to, provided by previous iterations of the algorithm. Because the items change size between iterations, the algorithm has to be run again to determine whether there is a better configuration, not only to attempt to minimize the amount of bins used, but also to determine whether the capacity of a bin is being exceeded. For this reason, approaching this problem using the Linear Programming approach, would completely disregard whether a certain item is assigned to a different bin other than the one it is currently in. For this reason, the work elaborated throughout this thesis will have more emphasis on Approximate algorithms, where there is more control over the bin assignment rules.
+In \cite{delorme2016bin}, there is an extensive review on the state of the art
+algorithms that have been developed to solve the ILP problem, comparing several
+models and their efficiency when solving the same set of problems. 
 
-\subsection{Approximation Algorithms and Heuristics}
+The algorithm has to be run at every iteration not only to determine whether it
+is possible to attain a better configuration, or if a bin has its capacity
+exceeded 
+
+Because the items change size between iterations, the algorithm has to be run
+again to determine whether there is a better configuration, not only to attempt
+to minimize the amount of bins used, but also to determine whether the capacity
+of a bin is being exceeded. As such, approaching this problem using the
+Linear Programming approach, would completely disregard whether a certain item
+is assigned to a different bin other than the one it is currently in. 
+
+For this reason, the work elaborated throughout this thesis will have more
+emphasis on Approximate algorithms, where there is more control over the bin
+assignment rules.
+
+\section{Approximation Algorithms and Heuristics}
 \label{sub:Approximation Algorithms and Heuristics}
 
 During this section, the method presented in \cite{coffman2013bin} to classify a BPP problem will be employed throughout the analysis of the algorithms.
