@@ -63,20 +63,21 @@ In \cite{delorme2016bin}, there is an extensive review on the state of the art
 algorithms that have been developed to solve the ILP problem, comparing several
 models and their efficiency when solving the same set of problems. 
 
-Provided two time instants, $t_1$ (the last instant at which the item
-assignment was computed) and $t_2$ (the current time instant at which the
-assignment is to be re-computed), given that the items' sizes change between
-$t_1$ and $t_2$, it is possible that the configuration computed in $t_1$ no longer
-complies with constraint \ref{opt:c1}. This reinforces the fact that
-the algorithm has to be re-computed at $t_2$. Considering the NP-hard nature of
-the problem, and the fact that the ILP problem is only interested in minimizing
-the amount of bins disregarding an item's previous assignment, this
-thesis will give more emphasis to the Approximation Algorithms that provide more
-control over the item reassignment problem, and provide a solution within
-bounded time.
+Provided two time instants, $t_1$ (the last instant at which the item assignment
+was computed) and $t_2$ (the current time instant at which the assignment is to
+be re-computed), given that the items' sizes change between $t_1$ and $t_2$, it
+is possible that the configuration computed in $t_1$ no longer complies with
+constraint \ref{opt:c1}. This reinforces the fact that the algorithm has to be
+re-computed at $t_2$. Considering the NP-hard nature of the problem, and the
+fact that the ILP problem is only interested in minimizing the amount of bins
+disregarding an item's previous assignment, this thesis will give more emphasis
+to the Approximation Algorithms that provide more control over the item
+reassignment problem, and provide a solution within the strict time constraints
+imposed by the real-time nature of the problem presented in chapter
+\ref{chap:intro}.
 
 \section{Approximation Algorithms and Heuristics}
-\label{sub:Approximation Algorithms and Heuristics}
+\label{section:AA}
 
 In \cite{coffman2013bin} a method is presented to classify the BPP problem,
 which will be used throughout this section. During an algorithm's execution,
@@ -120,102 +121,158 @@ classes of problems that are of interest for this problem are:
 
 \subsection{Online Algorithms}
 
-As previously mentioned in \ref{sub:Approximation Algorithms and Heuristics}, without an overview of all the items within a list, whenever an item is analyzed it has to be assigned a bin. This also implies that the bin in which the current item will be inserted is a function of the weights of all the preceding items in the list.
+As previously mentioned in section \ref{section:AA}, whenever an item is
+analyzed it has to be assigned a bin. This also implies that the bin in which
+the current item will be inserted is a function of the weights of all the
+preceding items in the list.
 
-This section will analyze Any fit, Almost any fit, bounded-space and reservation technique algorithms.
+This section will analyze Any fit, Almost any fit, bounded-space and reservation
+technique algorithms.  Throughout the following sections, when \textit{current
+item} is mentioned, it is referring to the next item to assign a bin to. After
+assignment, the item that follows it in the list, is then considered the
+\textit{current item}.
 
-Throughout the following sections, when \textit{current item} is mentioned, it is referring to the next item to assign a bin to. After assignment, the item that follows it in the list, is then considered the \textit{current item}.
+\textbf{Next Fit (NF)} is one of the simplest algorithms developed to solve the
+bin packing problem heuristically, and it consists in the following procedure.
+The current bin is considered to be the last non-empty bin opened. If the
+current bin has space for the item then the item is inserted. Otherwise, the
+current bin is closed, a new one is opened, and the item is inserted. The next
+item on the list is then considered the current item.
 
-\textbf{Next Fit (NF)} is one of the simplest algorithms developed to solve the bin packing problem heuristically, and it consists in the following procedure. The current bin is considered to be the last non-empty bin opened. If the current bin has space for the item then the item is inserted. Otherwise, the current bin is closed, a new one is opened, and the item is inserted. The next item on the list is then considered the current item.
-
-With regards to time complexity, NF is $O(n)$. And because there is only one open bin at a time, this is a bounded-space algorithm with $k = 1$. As proven in \cite{johnson1973near}, 
-
+With regards to time complexity, NF is $O(n)$. And because there is only one
+open bin at a time, this is a bounded-space algorithm with $k = 1$. As proven in
+\cite{johnson1973near}, 
 \begin{equation}
     R_{NF}^\infty = 2.
 \end{equation}
 
-\textbf{Worst Fit (WF)}: For each element, it looks for the open bin that has the most space for the item where it fits, and inserts the item on that bin. If there is no open bin that can hold the item, then a new bin is opened, and the item is inserted. Having no closing procedure, this algorithm is unbounded, and it does not run in linear time.
+\textbf{Worst Fit (WF)}: For each element, it looks for the open bin that has
+the most space where it fits, and inserts the item in that bin. If there is no
+open bin that can hold the item, then a new bin is opened, and the item is
+inserted. Having no closing procedure, this algorithm is unbounded, and it does
+not run in linear time.
 
-Although it is expected that this algorithm would perform better than the NF, in the worst-case performance analysis it does not gain any benefits from not closing its bins, as stated in \cite{man1996approximation}
-
+Although it is expected that this algorithm would perform better than the NF, in
+the worst-case performance analysis it does not gain any benefits from not
+closing its bins, as stated in \cite{man1996approximation}
 \begin{equation}
     R_{WF}^\infty = R_{NF}^\infty.
 \end{equation}
 
-\textbf{First Fit (FF)} searches each open bin starting from the lowest index, and the first bin that has the capacity to fit the item, is where the item is inserted. If there is no open bin where the item can be inserted, then a new bin is opened where the item is inserted. \cite{johnson1974worst} showed that 
-
+\textbf{First Fit (FF)} searches each open bin starting from the lowest index,
+and the first bin that has the capacity to fit the item, is where the item is
+inserted. If there is no open bin where the item can be inserted, then a new bin
+is opened where the item is inserted. In \cite{johnson1974worst} it is shown
+that
 \begin{equation}
     R_{FF}^\infty = \frac{17}{10}.
 \end{equation}
 
-There is a more general class of algorithms presented as \textit{Any Fit} ($AF$) in \cite{johnson1974fast}. This class' constraint is that if $BIN_j$ is empty, then no item will be inserted into this bin if there is any bin to the left of $BIN_j$ that has the capacity to contain the item. In the same paper it is also shown that no algorithm that fits this constraint can perform worst than the WF, nor can it perform better than the FF, always with respect to the asymptotic performance ratio. Then
-
+There is a more general class of algorithms presented as \textit{Any Fit} ($AF$)
+in \cite{johnson1974fast}. This class' constraint is that if $BIN_j$ is empty,
+then no item will be inserted into this bin if there is any bin to the left of
+$BIN_j$ that has the capacity to contain the item. In the same paper it is also
+shown that no algorithm that fits this constraint can perform worst than the WF,
+nor can it perform better than the FF, always with respect to the asymptotic
+performance ratio. Then
 \begin{equation}
     R_{FF}^\infty \leq R_A^\infty \leq R_{WF}^\infty, \; \forall \; A \in AF
 \end{equation}
 
-\textbf{Best fit (BF)}: Attempts to fit the item into any of the open bins where it fits the tightest. If it doesn't fit in any, then a new bin is created and assigned to the item. As can be seen, it is similar to the worst fit, with exception to the fitting condition, differing only in the fact that the item is inserted where it fits the tightest, and not where it leaves most slack.
+\textbf{Best fit (BF)}: Attempts to fit the item into any of the open bins where
+it fits the tightest. If it doesn't fit in any, then a new bin is created and
+assigned to the item. As can be seen, it is similar to the worst fit, with
+exception to the fitting condition, differing only in the fact that the item is
+inserted where it fits the tightest, and not where it leaves most slack.
 
-As it happens, BF also belongs to the $AF$ class, and it performs as well as the First Fit
-
+As it happens, BF also belongs to the $AF$ class, and it performs as well as the
+First Fit
 \begin{equation}
     R_{BF}^\infty = R_{FF}^\infty.
 \end{equation}
 
-In \cite{johnson1974fast}, another class of algorithms presented, which is also a subclass of $AF$, is \textit{Almost Any Fit} ($AAF$). This class has as constraints: 
-\textit{If $BIN_j$ is the first empty bin, and $BIN_k$ is the bin that has the most slack, where $k < j$, then the current item is not inserted into $k$ if it fits into any bin to the left of k.} One of the properties proven in the same paper, is that 
-
+In \cite{johnson1974fast}, a another class of algorithms presented, which is
+also a subclass of $AF$, is \textit{Almost Any Fit} ($AAF$). This class has as
+constraints: \textit{If $BIN_j$ is the first empty bin, and $BIN_k$ is the bin
+that has the most slack, where $k < j$, then the current item is not inserted
+into $k$ if it fits into any bin to the left of k.} One of the properties proven
+in the same paper, is that 
 \begin{equation}
     R_A^\infty = R_{FF}^\infty, \; \forall \; A \in AAF,
 \end{equation}
-which is to say that any algorithm that fits the previous constraints, have the same APR as the FF algorithm. Focusing on the constraints, it is clear to see how BF and FF belong to this class. 
+which is to say that any algorithm that fits the previous constraints, have the
+same APR as the FF algorithm. Focusing on the constraints, it is clear to see
+how BF and FF belong to this class. 
 
-Due to the constraints presented in the $AAF$ class, an improvement for the WF algorithm arises wherein the current item is inserted in the second bin with most space, instead of the first. This algorithm is the Almost Worst Fit (AWF), and with this simple change, now belongs to the AAF class, having as APR
-
+Due to the constraints presented in the $AAF$ class, an improvement for the WF
+algorithm arises wherein the current item is inserted in the second bin with
+most space, instead of the first. This algorithm is the Almost Worst Fit (AWF),
+and with this simple change, now belongs to the AAF class, having as APR
 \begin{equation}
     R_{AWF}^\infty = R_{FF}^\infty = \frac{17}{10}.
 \end{equation}
 
 \subsection{Bounded-space} 
 
-Bounded-space algorithms have a predefined limit on the amount of bins that are allowed to be open at a given instance, which will be defined as $k$. It is also a subclass of the online algorithms.
+Bounded-space algorithms have a predefined limit on the amount of bins that are
+allowed to be open at a given instance, which will be defined as $k$. It is also
+a subclass of the online algorithms.
 
-An example of a bounded-space algorithm is NF, as it never has more than a single open bin at a given instant. The other presented online algorithms can also be adapted into a bounded space algorithm, simply by specifying a procedure as to which bin to close before exceeding the limit.
+An example of a bounded-space algorithm is NF, as it never has more than a
+single open bin at a given instant. The other presented online algorithms can
+also be adapted into a bounded space algorithm, simply by specifying a procedure
+as to which bin to close before exceeding the limit.
 
-A bounded-space algorithm can be defined via their packing and closing rules \cite{coffman2013bin}. A class that derives from rules based on the FF and BF can be defined in the following manner: 
+A bounded-space algorithm can be defined via their packing and closing rules
+\cite{coffman2013bin}. A class that derives from rules based on the FF and BF
+can be defined in the following manner: 
 \begin{itemize}
-    \item Packing - When packing an item into one of the available open bins, the selected bin either follows a FF or BF approach.
-    \item Closing - When choosing which bin to close, if following the FF approach, then the bin with the lowest index is closed. If following the BF it's the bin that is filled the most that is selected as the one to be closed.
+    \item Packing - When packing an item into one of the available open bins,
+        the selected bin either follows a FF or BF approach.
+    \item Closing - When choosing which bin to close, if following the FF
+        approach, then the bin with the lowest index is closed. If following the
+        BF it's the bin that is filled the most that is selected as the one to
+        be closed.
 \end{itemize}
 
-The notation for this class of algorithms is $AXY_k$, where X represents the packing rule, and assumes the letters $F$ or $B$, and $Y$ which can either be a $F$ or a $B$, refers to the closing rule. The $k$ represents the maximum amount of open bins allowed.
+The notation for this class of algorithms is $AXY_k$, where X represents the
+packing rule, and assumes the letters $F$ or $B$, and $Y$ which can either be a
+$F$ or a $B$, refers to the closing rule. The $k$ represents the maximum amount
+of open bins allowed.
 
-\textbf{Next-k-fit} applies both packing and closing rules based on the first fit algorithm, and as expected when $k \to \infty$ it approximates the FF algorithm, having as APR $17/10$. For variable $k$, as shown in \cite{mao1993tight}
+\textbf{Next-k-fit} applies both packing and closing rules based on the first
+fit algorithm, and as expected when $k \to \infty$ it approximates the FF
+algorithm, having as APR $17/10$. For variable $k$, as shown in
+\cite{mao1993tight}
 
 \begin{equation}
     R_{AFF_k}^\infty = \frac{17}{10} + \frac{3}{10k - 10}, \quad \forall \; k \geq 2.
 \end{equation}
 
-\textbf{Best-k-fit}, which is also known as the $ABF_k$ algorithm, has been proven in \cite{mao1993besk} to have
-
+\textbf{Best-k-fit}, which is also known as the $ABF_k$ algorithm, has been
+proven in \cite{mao1993besk} to have
 \begin{equation}
     R_{ABF_k}^\infty = \frac{17}{10} + \frac{3}{10k}, \quad  \forall \; k \geq 2.
 \end{equation}
 
 As for $AFB_k$, \cite{zhang1994tight} showed that this algorithm has
-
 \begin{equation}
     R_{AFB_k}^\infty = R_{AFF_k}^\infty, \quad  \forall \; k \geq 2.
 \end{equation}
 
-For the last possible combination of this class of algorithms, $ABB_k$ has been proven in \cite{csirik2001bounded} to have 
-
+For the last possible combination of this class of algorithms, $ABB_k$ has been
+proven in \cite{csirik2001bounded} to have 
 \begin{equation}
     R_{ABB_k}^\infty = \frac{17}{10},  \quad \forall \; k \geq 2
 \end{equation}
-which surprisingly indicates that the value of $k$ (as long as it's bigger than two) has no effect on the APR metric of this algorithm, contrary to all the previous algorithms.
+which surprisingly indicates that the value of $k$ (as long as it's bigger than
+two) has no effect on the APR metric of this algorithm, contrary to all the
+previous algorithms.
 
-The next algorithms make use of a reservation technique that proved to be very useful to break the lower bound of the APR of the Any Fit class of algorithms. The first algorithm to be developed of this type was the Harmonic-Fit ($HF_k$) which makes use of k to split the sizes of items into $k$ different intervals.
+The next algorithms make use of a reservation technique that proved to be very
+useful to break the lower bound of the APR of the Any Fit class of algorithms.
+The first algorithm to be developed of this type was the Harmonic-Fit ($HF_k$)
+which makes use of k to split the sizes of items into $k$ different intervals.
 
 $I_j$ denotes the interval of sizes with index j, and is within the range 
 \begin{equation}
@@ -223,9 +280,12 @@ $I_j$ denotes the interval of sizes with index j, and is within the range
 \end{equation}
 $I_k$ is defined as the interval from $(0, 1/k]$.
 
-$B_j$ is used to classify the bin type which is responsible for holding items of type $I_j$.
+$B_j$ is used to classify the bin type which is responsible for holding items of
+type $I_j$.
 
-\cite{lee1985simple} presents the APR of $HF_k$ in the following manner. If k denotes the maximum amount of open bins allowed at once, then the asymptotic performance ratio can be shown with respect to $k$ in the following manner:
+\cite{lee1985simple} presents the APR of $HF_k$ in the following manner. If k
+denotes the maximum amount of open bins allowed at once, then the asymptotic
+performance ratio can be shown with respect to $k$ in the following manner:
 
 \begin{align}
     & t_1 = 1 \quad and \quad t_{i+1} = t_i(t_i + 1) \quad \forall \; i \geq 1 \\
@@ -234,35 +294,59 @@ $B_j$ is used to classify the bin type which is responsible for holding items of
     & R_{HF_k}^\infty = \sum_{j=1}^{i} \frac{1}{t_j} + \frac{k}{t_{i+1}(k-1)}
 \end{align}
 
-When $k \to \infty$, then $R_{HF_k}^\infty \approx 1.6910$. It is also important to note than to obtain a better APR metric compared to the other online bin packing algorithms, $HF_k$ achieves this with $k \geq 7$, as is shown by \cite{lee1985simple}.
+When $k \to \infty$, then $R_{HF_k}^\infty \approx 1.6910$. It is also important
+to note than to obtain a better APR metric compared to the other online bin
+packing algorithms, $HF_k$ achieves this with $k \geq 7$, as is shown by
+\cite{lee1985simple}.
 
-Posterior to this technique being presented, it was clear that the reservation technique could be a good approach to improve the performance of the Any-Fit algorithms, and as such, several other algorithms have been created around this technique, that achieve even better APR's than HF, but because these techniques all involve assigning item types, based on their size, to their respective bin type, this approach is not applicable to the problem, as the control over item rebalancing is reduced, which will further be described in the following chapter.
-
-
+Posterior to this technique being presented, it was clear that the reservation
+technique could be a good approach to improve the performance of the Any-Fit
+algorithms, and as such, several other algorithms have been created around this
+technique, that achieve even better APR's than HF, but because these techniques
+all involve assigning item types, based on their size, to their respective bin
+type, this approach is not applicable to the problem, as the control over item
+rebalancing is reduced, which will further be described in the following
+chapter.
 
 \subsection{Offline Algorithms}
 
-Comparing with the previous section, offline algorithms have the added benefit that all items are known prior to its execution. As long as the list of items remains the same, items can be grouped, sorted or anything that might be convenient for the algorithm that is going to execute over the list of items. 
+Comparing with the previous section, offline algorithms have the added benefit
+that all items are known prior to its execution. As long as the list of items
+remains the same, items can be grouped, sorted or anything that might be
+convenient for the algorithm that is going to execute over the list of items. 
 
-It is important to note that as soon as an algorithm chooses to sort the list of items, it automatically implies that the algorithm no longer runs in linear-time as the sorting algorithm would have a time complexity of $O(n log(n))$.
+It is important to note that as soon as an algorithm chooses to sort the list of
+items, it automatically implies that the algorithm no longer runs in linear-time
+as the sorting algorithm would have a time complexity of $O(n log(n))$.
 
-Most of the Any fit algorithm, perform best if the list of items is sorted in a non-increasing order. The following three algorithms remain the same as for how the packing is done when analyzing the list of items, with the exception that before running the algorithm, the list is sorted.
+Most of the Any fit algorithm, perform best if the list of items is sorted in a
+non-increasing order. The following three algorithms remain the same as for how
+the packing is done when analyzing the list of items, with the exception that
+before running the algorithm, the list is sorted.
 
-Provided the list is sorted in the aforementioned manner, the \textbf{Next Fit Decreasing (NFD)} has a considerable improvement in terms of it's worst-case performance, and performs slightly better than FF and BF, as presented by \cite{baker1981tight}
+Provided the list is sorted in the aforementioned manner, the \textbf{Next Fit
+Decreasing (NFD)} has a considerable improvement in terms of it's worst-case
+performance, and performs slightly better than FF and BF, as presented by
+\cite{baker1981tight}
 \begin{equation}
     R_{NFD}^\infty \approx 1.6910.
 \end{equation}
 
-As can be seen in \cite{johnson1974worst}, \textbf{Best Fit Decreasing (BFD)} and \textbf{First Fit Decreasing (FFD)} improve the APR metric with presorting compared to their online versions of the same algorithm 
+As can be seen in \cite{johnson1974worst}, \textbf{Best Fit Decreasing (BFD)}
+and \textbf{First Fit Decreasing (FFD)} improve the APR metric with presorting
+compared to their online versions of the same algorithm 
 \begin{equation}
     R_{BFD}^\infty = R_{FFD}^\infty = \frac{11}{9}.
 \end{equation}
 
-Another algorithm which is worth mentioning within this class of offline algorithms is the \textbf{Modified First Fit Decreasing (MFFD)}. As shown in \cite{johnson19857160}, The APR is
+Another algorithm which is worth mentioning within this class of offline
+algorithms is the \textbf{Modified First Fit Decreasing (MFFD)}. As shown in
+\cite{johnson19857160}, The APR is
 \begin{equation}
     R_{MFFD}^\infty = \frac{71}{60},
 \end{equation}
-which is achieved by initially presorting the items in a decreasing manner and grouping each item into seven distinct groups based on the item's size. 
+which is achieved by initially presorting the items in a decreasing manner and
+grouping each item into seven distinct groups based on the item's size. 
 
 \begin{table}[H]
 \caption{Item size interval which guides the grouping for the MFFD algorithm.}
@@ -285,13 +369,73 @@ which is achieved by initially presorting the items in a decreasing manner and g
 
 After doing so, the algorithm then performs the following five steps: 
 \begin{enumerate}
-    \item For each item that belongs to group A, from biggest to smallest, assign it a bin with the same index as the item has within it's group. When this process terminates, there are as many bins as items in group A and the bins created are $B_1, ..., B_{|A|}$.
-    \item Iterating over the existing bins from left to right, for each bin, if any item in group $B$ fits in the bin, insert the biggest such item in the current bin.
-    \item Iterating through the list of bins from right to left, for each bin, if the current bin contains an item that belongs to group $B$, do nothing. If the two smallest items in $C \cup D \cup E$ do not fit, do nothing. Otherwise insert the smallest unpacked items from $C \cup D \cup E$ combined with the largest item from $C \cup D \cup E$ that will fit.
-    \item iterate over the list of bins from left to right, and for each bin if any unpacked item fits, insert the largest such item, repeating until no unpacked item fits.
-    \item Lastly, the remaining items that did not fit in bins $B_1, ..., B_{|A|}$ are inserted in an FFD fashion starting with a new bin $B_{|A|+1}$. 
+    \item For each item that belongs to group A, from biggest to smallest,
+        assign it a bin with the same index as the item has within it's group.
+        When this process terminates, there are as many bins as items in group A
+        and the bins created are $B_1, ..., B_{|A|}$.
+    \item Iterating over the existing bins from left to right, for each bin, if
+        any item in group $B$ fits in the bin, insert the biggest such item in
+        the current bin.
+    \item Iterating through the list of bins from right to left, for each bin,
+        if the current bin contains an item that belongs to group $B$, do
+        nothing. If the two smallest items in $C \cup D \cup E$ do not fit, do
+        nothing. Otherwise insert the smallest unpacked items from $C \cup D
+        \cup E$ combined with the largest item from $C \cup D \cup E$ that will
+        fit.
+    \item iterate over the list of bins from left to right, and for each bin if
+        any unpacked item fits, insert the largest such item, repeating until no
+        unpacked item fits.
+    \item Lastly, the remaining items that did not fit in bins $B_1, ...,
+        B_{|A|}$ are inserted in an FFD fashion starting with a new bin
+        $B_{|A|+1}$. 
 \end{enumerate}
 
+\section{Bin Packing Applications}
+
+There are a several cases where the BPP is applied to provide with an optimal or
+sub-optimal solution. In \cite{baldi2019generalized}, the problem is modeled as
+a BPP to solve the last mile delivery, a courier usually faces when having to
+decide which transportation companies are to be used to deliver the parcels to
+the customers. In this case, a Transportation Company (TC) represents types of
+bins, and a vehicle of a TC represents a bin instance. The generalization occurs
+at the moment of the vehicle allocation which automatically associates a profit
+value to the item which represents the TC's QoS. As such, the objective function
+aims to minimize the net cost related to the vehicle instances used to allocate
+the parcels and the profits associated with the parcel assignment.
+
+Another application where the BPP proves itself useful is in the The Virtual
+Machine Placement (VMP) problem, which has gained more attention due to
+increasing use of cloud providers to support companies' technological
+infrastructure. Usually the problem can be generalized to a set of tasks
+(Virtual Machines), each having to be assigned one of the cloud provider's
+physical machines while attempting to minimize the operational cost. A variation
+of the BPP is usually presented in this case where the items are considered
+ephemeral and add another temporal dimension since they have associated a start
+time and a duration during which the task has to be ran uninterrupted. 
+
+In \cite{de2016temporal} the tasks have an equal start time, and the BPP is also
+solved offline. The authors aim to minimize the unused capacity of a physical
+machine, and therefore the optimal solution for the BPP does not necessarily
+provide the optimal solution in their Temporal Variant of the BPP (TBPP). In
+addition to the temporal model presented by \cite{de2016temporal}, in
+\cite{aydin2020multi} the tasks may have differing start times, and the
+objective function presented is more in line with the traditional BPP where the
+number of physical machines required is minimized. Moreover, due to the
+increased energy costs related to machine fire-ups (switching a machine off when
+it is not in use and back on again when required), the authors also attempt to
+minimize the number of fire-ups, making their problem multi-objective.
+
+As presented in \cite{furini2018matheuristics}, provided a set of items $N =
+{1,2,...,n}$, a weight $w_i, \forall i \in N$, and a start and end time $[s_i,
+t_i[$, the set of items which have to be executing during a time instant $s_j$
+is $S_j = {n \in N: s_n \leq s_j, t_n and s_j}$. This allows the definition of
+the non-dominated set $T = {n \in N: S_k \subseteq S_n}$ which discretizes the
+time dimension into several time instants which have to solve the BPP
+assignment, and due to the stateful nature of the problem that allows a task to
+be in more than one $S_j$, which means that when analyzing one of the time
+instants in $T$, one of the items might already be assigned from a previous
+instant, and considering an item cannot be rebalanced, in this case an optimal
+solution for the $BPP(t)$ is not the same as an optimal solution for $TBPP(t)$.
 
 \section{Conclusion}
 
@@ -315,22 +459,27 @@ $t$ at which the algorithm is to be executed into account.
             && \forall \; i \in B, j \in L
 \end{alignat}
 
+Time instant $t$ represents an instant at which a measurement was performed
+of the items' sizes, leading to a new computation of the bin packing assignment.
+Since an assignment represents a consumer reading data from the partition, an
+item can also be reassigned to another consumer (bin) adding a new variation to the
+traditional BPP. 
 
-As presented throughout this chapter, the work that will be developed within this context involves several technologies that are constantly evolving.
+Although the temporal aspect of the Bin Packing Problem has already been
+reviewed, there is a gap when it comes to the possibility of rebalancing the
+items between the different bin instances, which is one of the aspects this
+thesis aims to cover. 
 
-Kafka presents a great solution to decoupling services and allowing asynchronous communication between microservices. Other features that Kafka is designed for is scalability, which allows the services to create more replicas of consumers within the same consumer group for faster data consumption. It is important to note that Kafka does not provide autoscaling, just the support for distributed data consumption. 
+This provides the basis for the work that will be developed. The objective is to
+compute different instances of the BPP over time to guarantee that a consumer
+group does not get behind on the messages sent to the partitions that the group
+is reading data from. 
 
-To enable the scheduling of distributed containers, Kubernetes is the most common tool for this purpose. The more support cloud providers develop for Kubernetes, the less manual interaction is required to add or remove nodes based on cluster use. This not only simplifies the cluster management, but it also automates cost optimization as the payment becomes per pod, instead of paying for the manually inserted node. For this reason, the autopilot tool provided by GKE is what will be used to provide a truly dynamic approach to consumer group autoscaling.
-
-Kafka's rebalancing algorithm attempts to balance the load between the consumers within a group by assigning approximately the same amount of partitions to each consumer. Because the partitions assigned do not all have the same write speed ($bytes/s$), it is not guaranteed that the consumer will in reality have the load balanced between them. 
-
-This provides the basis for the work that will be developed. The objective is to attempt to minimize the cost of a consumer group (the number of instances running), while at the same time attempting to make sure that the group does not get behind in the messages it has to read from a topic. 
-
-This approach is only possible because there is a general view of the maximum data rate of consumption of a single consumer within the studied context - although it can also be applied in other scenarios as long as there is a predictable model for a single consumer -. The next chapter will specify the consumer model, and formulate the problem as a BPP.
-
-In more detail, the aim is to try and minimize the amount of consumers active at once, while simultaneously making sure that the sum of the write speed of the partitions assigned to a single consumer does not exceed it's maximum data consumption capacity, and attempting to minimize partition redistribution between consumers. The last condition is due to the fact that assigning a partition to a new consumer briefly pauses the consumption so another consumer can pick up where the previous left off. 
-
-This consumer model is what allows to model the problem as a BPP. Approximation algorithms were considered the most appropriate approach as they are the algorithms that allow most control over the partition redistribution with least modification. This is also the reason why the Linear optimization approach will not be implemented. 
+This can only be done since the bin (consumer) is shown in section
+\ref{component:Monitor} to have an approximate maximum data consumption rate,
+and that the monitor process presented in section \ref{component:consumer}
+measures the current write speed of each partition the consumer group is
+interested in.
 
 % \section{Distributed Consumer Performance}
 
