@@ -1,5 +1,31 @@
 \chapter{Consumer Group Autoscaler} \label{chap:consumer_group_autoscaler}
 
+Due to the dynamic nature of the problem presented in chapter \ref{chap:intro},
+the items change in size depending on the measurement performed at time instant
+$t$. Consequently, constraint \ref{opt:c1} is remodeled to take the time instant
+$t$ at which the algorithm is to be executed into account.
+\begin{alignat}{3}
+\label{BPP model}
+    &\min       
+        &&\sum_{i \in B} y_i 
+            && \\
+    &\text{subject to} \quad
+        && \sum_{j \in L} \hat w_j(t) \cdot x_{ij} \leq y_i. \quad      
+            && \forall \; i \in B \\
+    &   && \sum_{i \in B} x_{ij} = 1, \quad                             
+            && \forall \; j \in L \\
+    &   && y_i \in \{0, 1\}                                             
+            && \forall \; i \in B \\
+    &   && x_{ij} \in \{0,1\}                                           
+            && \forall \; i \in B, j \in L
+\end{alignat}
+
+Time instant $t$ represents an instant at which a measurement was performed
+of the items' sizes, leading to a new computation of the bin packing assignment.
+Since an assignment represents a consumer reading data from the partition, an
+item can also be reassigned to another consumer (bin) adding a new variation to the
+traditional BPP. 
+
 The Data-Engineering (DE) team at HUUB is responsible for making a pipeline that
 inserts data from several data sources into a data lake so it can then be
 transformed and loaded into a single source of truth data warehouse. 

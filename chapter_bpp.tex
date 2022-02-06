@@ -417,32 +417,6 @@ same as an optimal solution for $TBPP(t)$.
 
 \section{Conclusion}
 
-Due to the dynamic nature of the problem presented in chapter \ref{chap:intro},
-the items change in size depending on the measurement performed at time instant
-$t$. Consequently, constraint \ref{opt:c1} is remodeled to take the time instant
-$t$ at which the algorithm is to be executed into account.
-\begin{alignat}{3}
-\label{BPP model}
-    &\min       
-        &&\sum_{i \in B} y_i 
-            && \\
-    &\text{subject to} \quad
-        && \sum_{j \in L} \hat w_j(t) \cdot x_{ij} \leq y_i. \quad      
-            && \forall \; i \in B \\
-    &   && \sum_{i \in B} x_{ij} = 1, \quad                             
-            && \forall \; j \in L \\
-    &   && y_i \in \{0, 1\}                                             
-            && \forall \; i \in B \\
-    &   && x_{ij} \in \{0,1\}                                           
-            && \forall \; i \in B, j \in L
-\end{alignat}
-
-Time instant $t$ represents an instant at which a measurement was performed
-of the items' sizes, leading to a new computation of the bin packing assignment.
-Since an assignment represents a consumer reading data from the partition, an
-item can also be reassigned to another consumer (bin) adding a new variation to the
-traditional BPP. 
-
 Although the temporal aspect of the Bin Packing Problem has already been
 reviewed, there is a gap when it comes to the possibility of rebalancing the
 items between the different bin instances, which is one of the aspects this
@@ -450,14 +424,8 @@ thesis aims to cover.
 
 This provides the basis for the work that will be developed. The objective is to
 compute different instances of the BPP over time to guarantee that a consumer
-group does not get behind on the messages sent to the partitions that the group
+group does not fall behind on the messages sent to the partitions that the group
 is reading data from. 
-
-This can only be done since the bin (consumer) is shown in section
-\ref{component:Monitor} to have an approximate maximum data consumption rate,
-and that the monitor process presented in section \ref{component:consumer}
-measures the current write speed of each partition the consumer group is
-interested in.
 
 % \section{Distributed Consumer Performance}
 
