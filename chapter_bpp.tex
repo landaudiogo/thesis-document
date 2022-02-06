@@ -1,22 +1,15 @@
 \chapter{Bin Packing Problem} \label{chap:literature review}
 
 The bin packing problem (BPP), as defined in the literature, is a combinatorial
-optimization problem that has been extensively studied since the thirties. Due
-to its NP-hard nature, on the practical side, several heuristic and
-metaheuristic algorithms have been proposed, as well Integer Linear Programming
-to determine the optimal solution. The former benefits from lower time execution
-to reach a solution which may not be optimal, whereas the latter provides the
-optimal solution, but requires more time to do so.
-
-As specified in \cite{wascher2007improved}, there are several categories with
-which to define a BPP. The problem at hand is the one of a Single Bin Size Bin
-Packing Problem (SBSBPP).
-
-As described in \cite{delorme2016bin}, an informal definition of this BPP, is:
-provided there are n items, each with a given weight \( w_j  \, (j = 1, ..., n)
-\) and an unlimited amount of bins with equal capacity \( C \), the goal is to
-arrange the n items in such a way that the capacity of each bin is not exceeded,
-and to determine the minimum amount of bins required to hold the n items.
+optimization problem that has been extensively studied since the thirties. As
+specified in \cite{wascher2007improved}, there are several categories with which
+to define a BPP. The problem at hand is the one of a Single Bin Size Bin Packing
+Problem (SBSBPP). As described in \cite{delorme2016bin}, an informal definition
+of this BPP, is: provided there are n items, each with a given weight \( w_j  \,
+(j = 1, ..., n) \) and an unlimited amount of bins with equal capacity \( C \),
+the goal is to arrange the n items in such a way that the capacity of each bin
+is not exceeded, and to determine the minimum amount of bins required to hold
+the $n$ items.
 
 Formally, the problem can be summarized as the following optimization problem:
 \begin{alignat}{3}
@@ -37,9 +30,9 @@ where set $B$ corresponds to the available bins, and $L$ as the list of items to
 be arranged into different bins. $x_{ij}$ indicates whether an item $j$ is
 packed in the bin $i$, whereas $y_i$ informs whether bin $i$ is used. 
 
-As for the constraints, \ref{opt:c1} assures that the sum of the items in a
-created bin, does not exceed it's capacity, and \ref{opt:c2} makes sure that every
-item is assigned a bin. 
+As for the constraints, \ref{opt:c1} assures that the sum of the items in a bin,
+does not exceed it's capacity, and \ref{opt:c2} makes sure that every item is
+assigned a bin. 
 
 It is also common to represent the bin-packing problem in its normalized
 version, where all the weights are down-scaled by the total capacity of a bin,
@@ -63,18 +56,17 @@ In \cite{delorme2016bin}, there is an extensive review on the state of the art
 algorithms that have been developed to solve the ILP problem, comparing several
 models and their efficiency when solving the same set of problems. 
 
-Provided two time instants, $t_1$ (the last instant at which the item assignment
-was computed) and $t_2$ (the current time instant at which the assignment is to
-be re-computed), given that the items' sizes change between $t_1$ and $t_2$, it
-is possible that the configuration computed in $t_1$ no longer complies with
-constraint \ref{opt:c1}. This reinforces the fact that the algorithm has to be
-re-computed at $t_2$. Considering the NP-hard nature of the problem, and the
-fact that the ILP problem is only interested in minimizing the amount of bins
-disregarding an item's previous assignment, this thesis will give more emphasis
-to the Approximation Algorithms that provide more control over the item
-reassignment problem, and provide a solution within the strict time constraints
-imposed by the real-time nature of the problem presented in chapter
-\ref{chap:intro}.
+Wihtin the context of the problem presented in chapter 1, provided two time
+instants $t_1$ (the last instant at which the item assignment was computed) and
+$t_2$ (the current time instant at which the assignment is to be re-computed),
+given that the items' sizes change between $t_1$ and $t_2$, it is possible that
+the configuration computed in $t_1$ no longer complies with constraint
+\ref{opt:c1}. Considering the NP-hard nature of the problem, and the fact that the
+ILP problem is only interested in minimizing the amount of bins disregarding an
+item's previous assignment, this thesis will give more emphasis to the
+Approximation Algorithms that provide more control over the item reassignment
+problem, and provide a solution within the strict time constraints imposed by
+the real-time requirements presented in chapter \ref{chap:intro}.
 
 \section{Approximation Algorithms and Heuristics}
 \label{section:AA}
@@ -105,12 +97,11 @@ the APR is defined as
 \end{equation}
 
 Despite the mulititude of classes presented in \cite{coffman2013bin}, the only
-classes of problems that are of interest for this problem are: 
+classes of problems that are of interest for this thesis are: 
 \begin{enumerate}
     \item online - Algorithms that have no holistic view over any other item in
         the list except the one it is currently assigning a bin to. It is also a
-        requirement that a bin is assigned to the item as soon as it is
-        analyzed.
+        requirement that an item is assigned a bin as soon as it is analyzed.
     \item bounded-space - The amount of bins open at a single instance is
         limited by a constant provided prior to its execution.
     \item offline - The algorithm is aware of all the items in the list before
@@ -121,10 +112,9 @@ classes of problems that are of interest for this problem are:
 
 \subsection{Online Algorithms}
 
-As previously mentioned in section \ref{section:AA}, whenever an item is
-analyzed it has to be assigned a bin. This also implies that the bin in which
-the current item will be inserted is a function of the weights of all the
-preceding items in the list.
+Whenever an item is analyzed it has to be assigned a bin. This also implies that
+the bin in which the current item will be inserted is a function of the weights
+of all the preceding items in the list.
 
 This section will analyze Any fit, Almost any fit, bounded-space and reservation
 technique algorithms.  Throughout the following sections, when \textit{current
@@ -236,14 +226,13 @@ can be defined in the following manner:
 \end{itemize}
 
 The notation for this class of algorithms is $AXY_k$, where X represents the
-packing rule, and assumes the letters $F$ or $B$, and $Y$ which can either be a
+packing rule, and assumes the letters $F$ or $B$, and $Y$ which can either be an
 $F$ or a $B$, refers to the closing rule. The $k$ represents the maximum amount
 of open bins allowed.
 
 \textbf{Next-k-fit} applies both packing and closing rules based on the first
 fit algorithm, and as expected when $k \to \infty$ it approximates the FF
-algorithm, having as APR $17/10$. For variable $k$, as shown in
-\cite{mao1993tight}
+algorithm, having as APR $17/10$. As shown in \cite{mao1993tight}
 
 \begin{equation}
     R_{AFF_k}^\infty = \frac{17}{10} + \frac{3}{10k - 10}, \quad \forall \; k \geq 2.
@@ -283,21 +272,9 @@ $I_k$ is defined as the interval from $(0, 1/k]$.
 $B_j$ is used to classify the bin type which is responsible for holding items of
 type $I_j$.
 
-\cite{lee1985simple} presents the APR of $HF_k$ in the following manner. If k
-denotes the maximum amount of open bins allowed at once, then the asymptotic
-performance ratio can be shown with respect to $k$ in the following manner:
-
-\begin{align}
-    & t_1 = 1 \quad and \quad t_{i+1} = t_i(t_i + 1) \quad \forall \; i \geq 1 \\
-    & \frac{1}{t_i} = 1 - \sum_{j=1}^{i-1} \frac{1}{t_j + 1} \\
-    & t_i < k \leq t_{i+1} \quad for \; i \geq 1 \\
-    & R_{HF_k}^\infty = \sum_{j=1}^{i} \frac{1}{t_j} + \frac{k}{t_{i+1}(k-1)}
-\end{align}
-
-When $k \to \infty$, then $R_{HF_k}^\infty \approx 1.6910$. It is also important
-to note than to obtain a better APR metric compared to the other online bin
-packing algorithms, $HF_k$ achieves this with $k \geq 7$, as is shown by
-\cite{lee1985simple}.
+It is shown in \cite{lee1985simple} that for $HF_k \forall k \geq 7$ the
+algorithm already performs better than the other online bin packing algorithms
+presented, with regards to the APR.
 
 Posterior to this technique being presented, it was clear that the reservation
 technique could be a good approach to improve the performance of the Any-Fit
@@ -311,7 +288,7 @@ chapter.
 \subsection{Offline Algorithms}
 
 Comparing with the previous section, offline algorithms have the added benefit
-that all items are known prior to its execution. As long as the list of items
+that all items are known prior to its execution. As long as the set of items
 remains the same, items can be grouped, sorted or anything that might be
 convenient for the algorithm that is going to execute over the list of items. 
 
@@ -319,7 +296,7 @@ It is important to note that as soon as an algorithm chooses to sort the list of
 items, it automatically implies that the algorithm no longer runs in linear-time
 as the sorting algorithm would have a time complexity of $O(n log(n))$.
 
-Most of the Any fit algorithm, perform best if the list of items is sorted in a
+Most of the Any Fit algorithms, perform best if the list of items is sorted in a
 non-increasing order. The following three algorithms remain the same as for how
 the packing is done when analyzing the list of items, with the exception that
 before running the algorithm, the list is sorted.
@@ -392,16 +369,18 @@ After doing so, the algorithm then performs the following five steps:
 
 \section{Bin Packing Applications}
 
-There are a several cases where the BPP is applied to provide with an optimal or
+There are several applications where the BPP is used to provide with an optimal or
 sub-optimal solution. In \cite{baldi2019generalized}, the problem is modeled as
-a BPP to solve the last mile delivery, a courier usually faces when having to
-decide which transportation companies are to be used to deliver the parcels to
-the customers. In this case, a Transportation Company (TC) represents types of
-bins, and a vehicle of a TC represents a bin instance. The generalization occurs
-at the moment of the vehicle allocation which automatically associates a profit
-value to the item which represents the TC's QoS. As such, the objective function
-aims to minimize the net cost related to the vehicle instances used to allocate
-the parcels and the profits associated with the parcel assignment.
+a BPP to solve the last mile delivery problem a courier usually faces when
+having to decide which transportation companies are to be used to deliver the
+parcels to the customers. In this case, a Transportation Company (TC) represents
+a type of bin, and a vehicle of a TC represents a bin instance. The problem is
+formulated as a generalization of the BPP, considering a profit value is
+incorporated into the cost function which is based on the bin-type each item
+ends up assigned to, which in the problem's context, this profit represents the TC's
+QoS. As such, the objective function aims to minimize the net cost related to
+the vehicle instances used to allocate the parcels and the profits associated
+with the parcel assignment.
 
 Another application where the BPP proves itself useful is in the The Virtual
 Machine Placement (VMP) problem, which has gained more attention due to
@@ -413,29 +392,28 @@ of the BPP is usually presented in this case where the items are considered
 ephemeral and add another temporal dimension since they have associated a start
 time and a duration during which the task has to be ran uninterrupted. 
 
-In \cite{de2016temporal} the tasks have an equal start time, and the BPP is also
-solved offline. The authors aim to minimize the unused capacity of a physical
-machine, and therefore the optimal solution for the BPP does not necessarily
-provide the optimal solution in their Temporal Variant of the BPP (TBPP). In
-addition to the temporal model presented by \cite{de2016temporal}, in
-\cite{aydin2020multi} the tasks may have differing start times, and the
-objective function presented is more in line with the traditional BPP where the
-number of physical machines required is minimized. Moreover, due to the
-increased energy costs related to machine fire-ups (switching a machine off when
-it is not in use and back on again when required), the authors also attempt to
-minimize the number of fire-ups, making their problem multi-objective.
+In \cite{de2016temporal} the tasks have an equal start time and the aim is to
+minimize the unused capacity of a physical machine over time, and therefore the
+optimal solution for the BPP does not necessarily provide the optimal solution
+in their Temporal Variant of the BPP (TBPP). In addition to the temporal model
+presented by \cite{de2016temporal}, in \cite{aydin2020multi} the tasks may have
+differing start times, and the objective function presented is more in line with
+the traditional BPP where the number of physical machines required is minimized.
+Moreover, due to the increased energy costs related to machine fire-ups
+(switching a machine off when it is not in use and back on again when required),
+the authors also attempt to minimize the number of fire-ups, making their
+problem multi-objective.
 
 As presented in \cite{furini2018matheuristics}, provided a set of items $N =
-{1,2,...,n}$, a weight $w_i, \forall i \in N$, and a start and end time $[s_i,
-t_i[$, the set of items which have to be executing during a time instant $s_j$
-is $S_j = {n \in N: s_n \leq s_j, t_n and s_j}$. This allows the definition of
-the non-dominated set $T = {n \in N: S_k \subseteq S_n}$ which discretizes the
-time dimension into several time instants which have to solve the BPP
-assignment, and due to the stateful nature of the problem that allows a task to
-be in more than one $S_j$, which means that when analyzing one of the time
-instants in $T$, one of the items might already be assigned from a previous
-instant, and considering an item cannot be rebalanced, in this case an optimal
-solution for the $BPP(t)$ is not the same as an optimal solution for $TBPP(t)$.
+\{1,2,...,n\}$, a weight $w_i \; \forall i \in N$, and a start and end time
+$[s_i, t_i[$, the set of items which have to be executing at a time instant
+$s_j$ is $S_j = \{n \in N: s_n \leq s_j \; and \; t_n > s_j\}$. This allows the
+definition of the non-dominated set $T = \{n \in N: S_k \subseteq S_n\}$ which
+discretizes the time dimension into several time instants. Due to the stateful
+nature of the problem that allows a task to be in more than one $S_j$, which
+implies an item may have an assignment from a previous time instant, and since
+an item cannot be rebalanced, an optimal solution for the $BPP(t)$ is not the
+same as an optimal solution for $TBPP(t)$.
 
 \section{Conclusion}
 
