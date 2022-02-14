@@ -1,9 +1,70 @@
 \chapter{Consumer Group Autoscaler} \label{chap:consumer_group_autoscaler}
 
-Due to the dynamic nature of the problem presented in chapter \ref{chap:intro},
-the items change in size depending on the measurement performed at time instant
-$t$. Consequently, constraint \ref{opt:c1} is remodeled to take the time instant
-$t$ at which the algorithm is to be executed into account.
+\section{Problem Formulation}
+
+As shown in figure \ref{fig:problem_context}, the data pipeline consists of
+extracting data from Kafka topics and inserting it into a data lake to be
+further treated in the remaining ETL processes.  The work developed throughout
+this thesis, is based on optimizing the pipeline from Kafka into BigQuery, by
+providing a dynamic solution that makes use of Kafka's parallelism without
+disregarding the cost of the number of instances deployed. 
+
+The aim is to achieve a deterministic approach as for the number of consumers
+required working in parallel, so as to guarantee that the rate of production
+into a topic is not higher than the rate of consumption, which would lead to
+messages being accumulated in a topic making the lag increase between the last
+message inserted and the last message read by the consumer group.
+
+A Kafka topic is subdivided into several partitions, distributed within the
+several brokers of the Kafka cluster. When sending a message into a topic, if a
+key is provided, then the message will consistently end up in the same
+partition, whereas if none is provided, then the message is inserted in a
+round-robin fashion in one of the partitions of the same topic. Messages going
+into a topic may also have different sizes ($bytes$), and for these reasons, the
+write speed ($bytes/s$) to the several partitions in a topic is not guaranteed
+to be the same. 
+
+The following model, also assumes that the maximum consumption rate of a single
+consumer is constant, and if there is enough data to be consumed, this is the
+speed the consumer functions at when working "full throttle". This is
+elaborated in section \ref{result:bin capacity} based on several tests performed
+to determine this value for a consumer. 
+
+Based on the previous information, the model for this pipeline is considered to
+fit the constraints for the SBSBPP, where the consumer is the bin that has as
+capacity its maximum consumption rate, and the weights are the partitions and
+their respective write speeds. The problem then is to find the minimum amount of
+consumers where to fit all the partitions so as to make sure that the sum of the
+write speeds of the partitions assigned to a single consumer does not exceed its
+maximum capacity. 
+
+For a single iteration, the optimal solution finds the arrangement between the
+partitions and the consumers that minimizes the amount of instances, but this
+solution is not static, as the write speeds of the partitions changes with time.
+As such, there is a second factor to take into consideration which is the
+partition reassignment. 
+
+When a partition is reassigned, because 2 consumers from the same group cannot
+be consuming from the same partition at a time, when assigning a partition to
+another consumer, the one it is currently assigned to has to stop consuming in
+order to allow the new consumer to start. Due to this process, there is some
+downtime where data is not being consumed from a partition.
+
+For this reason, making use of an optimal algorithm that also minimizes
+partition redistribution, is not feasible as it would not run within the
+necessary time requirements due to the NP hard nature of the problem.  To
+determine the arrangement of partitions and consumers, this work is based on the
+studied approximation algorithms which have already been mentioned in the
+literature review. As is clear, there is no approximation algorithm which
+considers item redistribution. The reason for this may lay on the fact that the
+context where this problem lies is not very common, and there is no mention of a
+stateful assignment where each item is already assigned a bin prior to executing
+the algorithm.
+
+Due to the dynamic nature of the problem the items change in size depending on
+the measurement performed at time instant $t$. Consequently, constraint
+\ref{opt:c1} is remodeled to take the time instant $t$ at which the algorithm is
+to be executed into account.
 \begin{alignat}{3}
 \label{BPP model}
     &\min       
@@ -26,126 +87,92 @@ Since an assignment represents a consumer reading data from the partition, an
 item can also be reassigned to another consumer (bin) adding a new variation to the
 traditional BPP. 
 
-The Data-Engineering (DE) team at HUUB is responsible for making a pipeline that
-inserts data from several data sources into a data lake so it can then be
-transformed and loaded into a single source of truth data warehouse. 
+\begin{figure}[htb!] \centering
+    \includegraphics[width=\textwidth]{images/controller/System Design.png}
+    \caption{System architecture deployment diagram} 
+    \label{fig:system_architecture}
+\end{figure}
 
-HUUB's current architecture makes use of event sourcing to announce events that
-change the system's state within a microservice. Prior to this architecture, it
-was common to fetch the information from several different databases which were
-of interest for this department, periodically and in batches, which lead to
-tight coupling between the work performed by the different teams at the company.
+As presented in figure \ref{fig:system_architecture}, there are three components
+that interact with one another in order to model the problem as a BPP, and to
+provide a fully dynamic pipeline capable of autoscaliing based on the current
+load of data being produced to the partitions of interest.
 
-Based on reporting and real-time data needs, with regards to the extraction
-process, if there is new data that has to be consumed from a service that isn't
-currently being consumed, Kafka and event sourcing allow this addition to be as
-simple as subscribing the DE consumer to the topic of interest.
+The monitor process is responsible for measuring the write speed of each
+partition the group is interested in consuming data from, which is equivalent to
+specifying the size of the items of the BPP.  This information is then delivered
+to the controller, which is responsible for managing a consumer group (creating
+and deleting consumer instances), and mapping each partition to a consumer. The
+consumers are then informed of their tasks and read the data from the partitions
+that were assigned to them by the controller.
 
-The work developed throughout this thesis, is based on optimizing the pipeline
-from Kafka into bigquery, by providing a dynamic solution that makes use of
-Kafka's parallelism without disregarding the cost of the number of instances
-deployed. 
+\begin{comment}
+    The Data-Engineering (DE) team at HUUB is responsible for making a pipeline that
+    inserts data from several data sources into a data lake so it can then be
+    transformed and loaded into a single source of truth data warehouse. 
 
-The goal is to achieve a deterministic approach as for the number of consumers
-required working in parallel, so as to guarantee that the rate of production
-into a topic is not higher than the rate of consumption, which would lead to
-messages being accumulated in a topic making the lag increase between the last
-message inserted, and the last message read by the consumer group.
+    HUUB's current architecture makes use of event sourcing to announce events that
+    change the system's state within a microservice. Prior to this architecture, it
+    was common to fetch the information from several different databases which were
+    of interest for this department, periodically and in batches, which lead to
+    tight coupling between the work performed by the different teams at the company.
 
-A Kafka topic is subdivided into several partitions, distributed within the
-several brokers of the Kafka cluster. When sending a message into a topic, if a
-key is provided, then the message will consistently end up in the same
-partition, whereas if none is provided, then the message is inserted in a
-round-robin fashion in one of the partitions of the same topic. Messages going
-into a topic may also have different sizes ($bytes$), and for these reasons, the
-write speed ($bytes/s$) to the several partitions in a topic is not guaranteed
-to be the same. 
-
-The following model, also assumes that the maximum consumption rate of a single
-consumer is constant, and if there is enough data to be consumed, this is the
-speed the consumer will find itself when working "full throttle". This is
-elaborated in section \ref{result:bin capacity} based on several tests performed
-to determine this value for a consumer. 
-
-Based on the previous information, the model for this pipeline is considered to
-fit the constraints for the SBSBPP, where the consumer is the bin that has as
-capacity its maximum consumption rate, and the weights are the partitions and
-their respective write speeds. The problem then is to find the minimum amount of
-consumers where to fit all the partitions so as to make sure that the sum of the
-write speeds of the partitions assigned to a single consumer do not exceed its
-maximum capacity. 
-
-For the first iteration, the optimal solution finds the arrangement between the
-partitions and the consumers that minimizes the amount of instances, but this
-solution is not static, as the write speeds of the partitions change with time.
-As such, there is a second factor to take into consideration which is the
-partition reassignment. 
-
-When a partition is reassigned, because 2 consumers from the same group cannot
-be consuming from the same partition at the same time, when assigning a
-partition to another consumer, the one it is currently assigned to has to stop
-consuming in order to allow the new consumer to start. Due to this process,
-there is some downtime where data is not being consumed from a partition.
-
-For this reason, making use of an optimal algorithm that also minimizes
-partition redistribution, is not feasible as it would not run within the
-necessary time requirements due to the NP hard nature of the problem. 
-
-To determine the arrangement of partitions and consumers, this work is based on
-the studied approximation algorithms which have already been mentioned in the
-literature review. As is clear, there is no approximation algorithm which
-considers item redistribution. The reason for this may lay on the fact that the
-context where this problem lies is not very common, and there is no mention of a
-stateful assignment where each item is already assigned a bin prior to executing
-the algorithm.
-
-The following sections aim to present the details of each component that is
-required to model this problem as a BPP and make it into a dynamic system
-capable of adapting based on the amount of data being produced to the topics of
-interest.
+    Based on reporting and real-time data needs, with regards to the extraction
+    process, if there is new data that has to be consumed from a service that isn't
+    currently being consumed, Kafka and event sourcing allow this addition to be as
+    simple as subscribing the DE consumer to the topic of interest.
+\end{comment}
 
 \section{Monitor} \label{component:Monitor}
 
-\IncMargin{1em} \begin{algorithm}[h]
-    \SetKwData{Left}{left}\SetKwData{This}{this}\SetKwData{Up}{up}
-    \SetKwFunction{Union}{Union}\SetKwFunction{FindCompress}{FindCompress}
-    \SetKwInOut{Input}{input} \Input{ admin - Kafka admin client to communicate
-    with cluster, \\ producer - Kafka producer client, \\ topics - list of topic
-    identifiers from which the monitor is to determine the speed of their
-    partitions } \BlankLine
+\IncMargin{1em} 
+\begin{algorithm}[h]
+    \SetKwData{Left}{left}
+    \SetKwData{This}{this}
+    \SetKwData{Up}{up}
+    \SetKwFunction{Union}{Union}
+    \SetKwFunction{FindCompress}{FindCompress}
+    \SetKwInOut{Input}{input} 
+    \Input{ 
+        admin - Kafka admin client to communicate with cluster, \\ 
+        producer - Kafka producer client, \\ 
+        topics - list of topic identifiers from which the monitor is to
+        determine the speed of their partitions 
+    } 
+    \BlankLine
 
-measurementQueue $\gets$ Queue<Measurement>()\; \While{true}{ measurement
-    $\gets$ new Measurement()\; measurement.partitionSizes $\gets$
-    admin.getLogDirs(topics)\; measurement.timestamp $\gets$ currentTime()\;
-    measurementQueue.add(measurement)\; \If{(measurementQueue.first.timestamp -
-    measurement.last.timestamp) > 30s}{ sizeDiff $\gets$
-    measurement.last.partitionSizes - measurement.first.partitionSizes\;
-    timeDiff $\gets$ measurement.last.timestamp - measurement.first.timestamp\;
-    measurementSpeed $\gets$ sizeDiff / timeDiff\;
-    producer.producer("data-engineering-monitor", measurementSpeed)
-    \While{(currentTime() - measurementQueue.first.timestamp) > 30s}{
-measurementQueue.pop()\; } } } \caption{Monitor process pseudo-code.}
+    measurementQueue $\gets$ Queue<Measurement>()\; 
+    \While{true}{ 
+        measurement $\gets$ new Measurement()\; 
+        measurement.partitionSizes $\gets$ admin.getLogDirs(topics)\; 
+        measurement.timestamp $\gets$ currentTime()\;
+        measurementQueue.add(measurement)\; 
+        \If{(measurementQueue.first.timestamp - measurement.last.timestamp) > 30s}{ 
+            sizeDiff $\gets$ measurement.last.partitionSizes - measurement.first.partitionSizes\;
+            timeDiff $\gets$ measurement.last.timestamp - measurement.first.timestamp\;
+            measurementSpeed $\gets$ sizeDiff / timeDiff\;
+            producer.producer("monitor.writeSpeed", measurementSpeed)
+            \While{(currentTime() - measurementQueue.first.timestamp) > 30s}{
+                measurementQueue.pop()\; 
+            } 
+        } 
+    } 
+    \caption{Monitor process pseudo-code.}
 \label{algo:monitor} \end{algorithm}\DecMargin{1em}
 
-As mentioned in \ref{component:controller} the algorithm requires a measure of
-the write speed of all the partitions within the topics of interest.
+To solve the BPP, initially the controller requires as input the write speed of
+each partition the consumer group is interested in consuming data from. The
+monitor process is responsible for providing this information.
 
-If enabled, Kafka exposes JMX metrics for a java process to consume from,
-providing with a complete monitoring tool. Prometheus is a wrapper to these JMX
-metrics as it creates a unified model to query for the data, and it also
-registers a timeseries of the metrics, allowing for a historic view of any
-parameter, as well as creating more elaborate metrics from the exposed cluster
-metrics.
-
-Due to the specificity of the required metric, which is the write speed to a
-partition of a single topic, to the best of my knowledge, neither of the
-aforementioned tools, nor any other tool available provides this information
-with regards to the cluster.
-
-For this reason, this section aims to explain the process that is responsible
-for monitoring the write speed of the partitions of interest, so as to provide
-with the input data for the algorithm to run the heuristic or to be used to
-trigger the execution of the algorithm to reassign partitions within the group.
+If enabled, Kafka exposes metrics to external java processes through Java
+Management Extensions (JMX). Prometheus can then be used as a wrapper to these
+metrics as it creates a unified model to query the data, and it also registers
+the data as a timeseries, allowing for a historic view of any parameter, as well
+as creating more elaborate metrics over the exposed cluster metrics. At the time
+of writing this thesis and to the best of my knowledge, there is no available
+metric that provides a partition's write speed.  For this reason, this section
+aims to explain the process that is responsible for monitoring the write speed
+of the partitions of interest.
 
 Kafka provides an Admin client, which can be used to administer the cluster, and
 also query information about it. This client/class exposes a method
@@ -159,16 +186,14 @@ excluded from the result of the previous method call, since this process is only
 interested in the partitions that belong to one of the topics of interest, and
 which are leaders.
 
-The monitor process is responsible for periodically polling for the amount of
-bytes of each partition, and associating a timestamp with the data, which is
-then stored in a queue. Each time the partition size is queried by the admin
-client, a timestamp is appended to the measurement, and it is inserted to the
-back of the queue. Any query that is older than $30s$, which is guaranteed to be
-in the front of the queue, is removed. To obtain the write speed of a single
-partition, the last element of the queue and the first (representing the latest
-and the earliest measurement of the partition size within the last $30s$) are
-used to compute the ratio between the difference in bytes and the difference in
-time ($bytes/s$). This is also the average write speed over the last 30 seconds.
+Each time the partition size is queried by the admin client, a timestamp is
+appended to the measurement, and it is inserted to the back of the queue. Any
+query that is older than $30s$, which is guaranteed to be in the front of the
+queue, is removed. To obtain the write speed of a single partition, the last
+element of the queue and the first (representing the latest and the earliest
+measurement of the partition size within the last $30s$) are used to compute the
+ratio between the difference in bytes and the difference in time ($bytes/s$).
+This is also the average write speed over the last 30 seconds.
 
 Every topic has the parameters \lstinline[language=Python]{retention.ms} and
 \lstinline[language=Python]{retention.bytes}, which determine how long a record
@@ -186,48 +211,59 @@ has to be communicated to the controller/orchestrator that runs the algorithm to
 assign the partitions to the consumers. To benefit from an asynchronous
 approach, this monitor process communicates with the controller/orchestrator
 process via a kafka topic named
-\lstinline[language=Python]{data-engineering-monitor}. The data to be inserted
+\lstinline[language=Python]{monitor.writeSpeed}, as shown in figure
+\ref{fig:system_architecture}. The data to be inserted
 is the write speed of the partitions of interest, which is then consumed by the
-controller/orchestrator to be used as input for the algorithm's execution, or to
-trigger the execution of the algorithm.
-
+controller/orchestrator to be used as input for the algorithm's execution.
 
 Two testing scenarios were developed to illustrate the measured partition write
 speeds by this method when a controlled producer is sending records at a
 predefined rate. The payload inserted into the partition is always 123 bytes.
 
 The first scenario has the producer send the message at 3 different rates for
-approximately 35 seconds each. As can be seen in \ref{fig:monitor_step}, the
-monitor increases the measured write speed rate slower than the actual speed as
-measured by the producer, since the monitor takes into consideration the first
-and last measurement made in the last 30 seconds, whereas the producer simply
-measures the produce rate since the last time it inserted a record into the
-partition. It takes the monitor 30 seconds to converge to the actual production
-speed where it then settles until the produce rate increases again.
+approximately 35 seconds each. As can be seen in figure \ref{fig:monitor_step},
+the monitor increases the measured write speed rate slower than the actual speed
+as measured by the producer, since the monitor takes into consideration the
+first and last measurement made in the last 30 seconds, whereas the producer
+simply measures the produce rate since the last time it inserted a record into
+the partition. It takes the monitor 30 seconds to converge to the actual
+production speed where it then settles until the produce rate increases again.
 
-\begin{figure}[H] \centering
-\includegraphics[width=0.7\textwidth]{images/monitor/monitor_step.png}
-\caption{Monitor step response to three different controlled write speeds.}
-\label{fig:monitor_step} \end{figure}
+\begin{figure}[htb!] 
+    \centering
+    \includegraphics[width=0.7\textwidth]{images/monitor/step.png}
+    \caption{Monitor step response to three different controlled write speeds.}
+    \label{fig:monitor_step} 
+\end{figure}
 
 The second scenario has the producer wait a randomized time interval (between
-$0.01s$ and $2s$) before sending the message to the partition. Since the monitor
-takes into consideration the last $30s$ since it's latest measurement, it is not
-affected by the noisy write speed as measured from the producer. Since the
-implementation has the time interval as a uniform random variable, when the
-monitor process stabilizes, it should stabilize on a speed rate as computed
-using the time interval's expected value which is $\approx 1s$. This is in fact
-the case as can be seen in \ref{fig:monitor_random}, since the write speed
-stabilizes around $123 bytes/s$. The statistical description of the producer's
-measured write speed better illustrates the noise reduction due to the monitor
-computing the average over the last $30s$ of each measurement.
-
-\begin{figure}[H] 
+$[0.01, 2]$ seconds), before sending the message to the partition. Since the
+monitor takes into consideration the last 30 seconds from its latest
+measurement, it is not affected by the noisy write speed as measured by the
+producer. Within these testing conditions, due to the wait time being modeled as
+a uniform random variable, the monitor process should stabilize at approximately
+the speed computed using the number of bytes produced and the expected wait
+time, which in this case is 123 bytes and approximately 1 second respectively.
+This is in fact the case as can be seen in figure \ref{fig:monitor_random},
+since the write speed stabilizes around $123 bytes/s$. Subfigure (b) from
+\ref{fig:monitor_random} presents a statistical description of the producer's
+measured write speed, that better illustrates the noise reduction in the
+monitor's measurement due to the average.
+\begin{figure}[!htb] 
     \centering
-    \includegraphics[width=\textwidth]{images/monitor/monitor_random.jpg}
+    \subfigure[]{
+        \includegraphics[width=0.4\textwidth]{images/monitor/random_without_boxplot.png}
+    }
+    \subfigure[]{
+        \includegraphics[width=0.4\textwidth]{images/monitor/random_with_boxplot.png}
+    }
     \caption{
-        Monitor response to a producer waiting uniformely between [0.01,2]s
-        every time it produces a record.
+        (a) Monitor response to a producer waiting uniformely between [0.01,2]s
+        every time it produces a record, along with the producer's speed
+        measured between each production instance.
+        (b) Monitor response to a producer waiting uniformely between [0.01,2]s
+        every time it produces a record, with the producer's measured speed
+        statistically summarized using a boxplot.
     } 
     \label{fig:monitor_random} 
 \end{figure}
@@ -235,18 +271,15 @@ computing the average over the last $30s$ of each measurement.
 
 \section{Consumer} \label{component:consumer}
 
-The Consumer goes through four important phases within it's process, to
-approximate it's consumption rate to a constant value when being challenged to
-work at it's peak performance. These phases repeat cyclically until the consumer
-is terminated by an external termination signal, or in the event of an
-unexpected exception. 
+The Consumer goes through four important phases within its process, to
+approximate its consumption rate to a constant value when being challenged to
+work at its peak performance. These phases repeat cyclically until the consumer
+is terminated by an external termination signal. 
 
 \subsection{Phase 1: Gathering Records}
 
 The first phase is where data is gathered before being sent to the data
-warehouse. 
-
-The consumer is configured with two important parameters,
+warehouse. The consumer is configured with two important parameters,
 \lstinline[language=Python]{BATCH_BYTES} and
 \lstinline[language=Python]{WAIT_TIME_SECS}, which indicate respectively, the
 amount of bytes the consumer waits to gather in a single iteration, and the
@@ -254,20 +287,38 @@ amount of time it is allowed to wait to gather the information.
 
 \subsection{Phase 2: Processing} \label{consumer:phase2}
 
-\IncMargin{1em} \begin{algorithm}[h]
-    \SetKwData{Left}{left}\SetKwData{This}{this}\SetKwData{Up}{up}
-    \SetKwFunction{Union}{Union}\SetKwFunction{FindCompress}{FindCompress}
-    \SetKwInOut{Input}{input}\SetKwInOut{Output}{output} \Input{\\ messages -
-    List of Kafka messages,\\ mapTopicsTable - Map that indicates which table a
-    message from a topic is inserted into } \Output{List<BatchList>} \BlankLine
+\IncMargin{1em} 
+\begin{algorithm}[h]
+    \SetKwData{Left}{left}
+    \SetKwData{This}{this}
+    \SetKwData{Up}{up}
+    \SetKwFunction{Union}{Union}
+    \SetKwFunction{FindCompress}{FindCompress}
+    \SetKwInOut{Input}{input}
+    \SetKwInOut{Output}{output} 
+    \Input{\\ 
+        messages - List of Kafka messages, \\ 
+        mapTopicsTable - Map that indicates which table a message from a topic
+            is inserted into 
+    } 
+    \Output{List<BatchList>} 
+    \BlankLine
 
-mapTableBatchlist $\leftarrow$ new Map[String, BatchList]()\; \For{msg in
-    messages}{ table $\leftarrow$ mapTopicTable.get(msg.topic())\; batchList
-    $\leftarrow$ mapTableBatchlist.get(table)\; \If{(batchList == None)} {
-        mapTableBatchlist[table] $\leftarrow$ new BatchList()\; batchList
-$\leftarrow$ mapTableBatchlist.get(table)\; } batchList.add(msg)\; }
-\KwRet{mapTableBatchlist.values()} \caption{Consumer Phase 2 algorithm}
-\label{algo:phase_2} \end{algorithm}\DecMargin{1em}
+    mapTableBatchlist $\leftarrow$ new Map[String, BatchList]()\; 
+    \For{msg in messages}{ 
+        table $\leftarrow$ mapTopicTable.get(msg.topic())\; 
+        batchList $\leftarrow$ mapTableBatchlist.get(table)\; 
+        \If{(batchList == None)} {
+            mapTableBatchlist[table] $\leftarrow$ new BatchList()\; 
+            batchList $\leftarrow$ mapTableBatchlist.get(table)\; 
+        } 
+        batchList.add(msg)\; 
+    }
+    \KwRet{mapTableBatchlist.values()} 
+\caption{Consumer Phase 2 algorithm}
+\label{algo:phase_2} 
+\end{algorithm} 
+\DecMargin{1em}
 
 The second phase is where the data gathered in the previous phase is prepared to
 be sent into bigquery. Each record fetched from a Kafka topic, represents a new
@@ -275,28 +326,23 @@ row in a bigquery table.
 
 To insert data into bigquery, Google's Python Bigquery Client is used. Each post
 request made with this client, has a batch of rows sent to a single table, and
-it is also limited to no more than 10MB per request.
+it is also limited to no more than $10Mbytes$ per request.
 
 Since the gathered records originate from multiple topics, each row has to be
-batched with data of it's kind, which are rows that are intended to be sent to
-the same bigquery table.
-
-A single instance of a Batch, a data structure created to agglomerate rows
-intended for the same bigquery table, holds all the rows which will be sent in a
-single post request through Google's python bigquery client API. Due to the
-imposed limit of a post request, a Batch has a payload limit of $5 Mbytes$. 
-
-A BatchList, is another data structure created to group instances of type Batch
-that refer to the same table.
+batched with data of its kind, which are rows that are intended to be sent to
+the same bigquery table.  A single instance of a Batch, a data structure created
+to agglomerate rows intended for the same bigquery table, holds all the rows
+which will be sent in a single post request through Google's python bigquery
+client API. Due to the imposed limit of a post request, a Batch has a payload
+limit of $5 Mbytes$.  A BatchList, is another data structure created to group
+instances of type Batch that refer to the same table.
 
 To process the data, a map stores the link between a table's id and the
-BatchList instance assigned to it. When analyzing a message, it's topic metadata
+BatchList instance assigned to it. When analyzing a message, its topic metadata
 indicates which table it is directed to, which in turn points to the BatchList
-it must be added to.
-
-When adding a message to a BatchList instance, this class controls to which
-Batch it is assigned, based on the size of the row, and the size of the last
-created Batch within this data structure.
+it must be added to.  When adding a message to a BatchList instance, this class
+controls to which Batch it is assigned, based on the size of the row, and the
+size of the last created Batch within this data structure.
 
 \subsection{Phase 3: Sending Data into Bigquery}
 
@@ -304,69 +350,82 @@ This is the final stage of the consumer's insert cycle. There is a list of
 BatchList instances, each having to be sent to a single bigquery table. To
 optimize the insert cycle, this phase is done asynchronously with respect to all
 the batches within the list of BatchLists contained in the map specified in
-\ref{consumer:phase2}. In other words, each batch corresponds to an asynchronous
-request to insert rows into a table.
-
-After successful insert of the rows into the bigquery table, the messages are
-then committed to Kafka. 
+algorithm \ref{consumer:phase2}. In other words, each batch corresponds to an
+asynchronous request to insert rows into a table. After successful insert of the
+rows into the bigquery table, the messages are then committed to Kafka. 
 
 \subsection{Phase 4: Consumer Metadata}
 
-\IncMargin{1em} \begin{algorithm}[h]
-    \SetKwData{Left}{left}\SetKwData{This}{this}\SetKwData{Up}{up}
-    \SetKwFunction{Union}{Union}\SetKwFunction{FindCompress}{FindCompress}
-    \SetKwInOut{Output}{output}\SetKwInOut{Input}{input} \Input{consumer -
-    consumer instance used to fetch information from the Kafka topics.}
-    \Output{} \BlankLine
+\IncMargin{1em} 
+\begin{algorithm}[h]
+    \SetKwData{Left}{left}
+    \SetKwData{This}{this}
+    \SetKwData{Up}{up}
+    \SetKwFunction{Union}{Union}
+    \SetKwFunction{FindCompress}{FindCompress}
+    %\SetKwInOut{Output}{output}
+    \SetKwInOut{Input}{input} 
+    \Input{
+        consumer - consumer instance used to fetch information from the Kafka topics.
+    }
+    %\Output{} \BlankLine
 
-Set<Partition> current $\gets$ consumer.getCurrentState()\; Set<Partition>
-    future $\gets$ current.copy()\;
+    Set<Partition> current $\gets$ consumer.getCurrentState()\; 
+    Set<Partition> future $\gets$ current.copy()\;
 
-Queue< Set<Partition> > changeStateQueue $\gets$ consumer.consumeMetadata()\;
-    \While{changeState $\gets$ changeStateQueue.pop()}{ \eIf{changeState.type ==
-    "StopConsumingCommand"}{ future $\gets$ future - changeState.partitions\; }{
-        future $\gets$ future $\cup$ changeState.partitions\; } } toAssign
-    $\gets$ future - current\; \label{algo:phase_4_toAssign} toStop $\gets$
-    current - future\; consumer.incrementalAssign(toAssign)\;
-    consumer.incrementalUnassign(toStop)\;
-    \label{algo:phase_4_incremental_assign}
+    Queue< Set<Partition> > changeStateQueue $\gets$ consumer.consumeMetadata()\;
+    \While{changeState $\gets$ changeStateQueue.pop()}{ 
+        \eIf{changeState.type == "StopConsumingCommand"}{ 
+            future $\gets$ future - changeState.partitions\; 
+        }{
+            future $\gets$ future $\cup$ changeState.partitions\; 
+        } 
+    } 
+    toAssign $\gets$ future - current\; \label{algo:phase_4_toAssign} 
+    toStop $\gets$ current - future\; 
+    consumer.incrementalAssign(toAssign)\;
+    consumer.incrementalUnassign(toStop)\; \label{algo:phase_4_incremental_assign}
 
-\caption{Consumer Phase 4 algorithm} \label{algo:phase_4}
-\end{algorithm}\DecMargin{1em}
+\caption{Consumer Phase 4 algorithm} 
+\label{algo:phase_4}
+\end{algorithm}
+\DecMargin{1em}
 
-The consumer has to be informed by the Controller \ref{component:controller}, as
-to which partitions it gets data from. For this purpose, to allow both the
-controller and the consumers to work asynchronously, a message queue is the
-ideal structure for this purpose.
+The consumer has to be informed by the Controller, as to which partitions it
+gets data from. For this purpose, to allow both the controller and the consumers
+to work asynchronously, a message queue is the ideal structure for this purpose.
 
 Following event sourcing patterns, the current state of a single consumer should
 be attained by consuming every message that was directed to it, which enforced a
 change in state. With a slight modification, Kafka is used for this
 communication between the controller and the consumers by creating a single
-controller topic named \lstinline[language=Python]{data-engineering-controller}.
+controller topic named \lstinline[language=Python]{consumer.metadata}.
 
 Maximum efficiency in data conveyed between each process, occurs when a single
-process only reads messages which are relevant for it's functioning, without
+process only reads messages which are relevant for its functioning, without
 having to ignore messages or data that it receives. As such, each consumer has
 to be assigned a separate queue in the
-\lstinline[language=Python]{data-engineering-controller} topic, which in Kafka
-represents a distinct partition per consumer.
+\lstinline[language=Python]{consumer.metadata} topic, which in Kafka represents
+a distinct partition per consumer.
 
-As will be further described in \ref{component:controller}, the consumer knows
-which partition to consume from through it's deployment's name. When the
+As will be further described in section \ref{component:controller}, the consumer
+knows which partition to consume from through its deployment's name. When the
 controller desires to communicate with this consumer, it simply has to send a
-record to it's partition. 
+record to its partition. 
 
 Each record published into this topic has to have the same AVRO schema as
-specified by \ref{appendix:avro_schema}. A command can be either a:
-\begin{itemize} \item StartConsumingCommand - The consumer is to start consuming
-            from each of the partitions within the record.  \item
-StopConsumingCommand - The consumer stops consuming from the partitions
-specified in the record.  \end{itemize}
+specified by the schema in \ref{appendix:avro_schema}. A command can be either
+a: 
+\begin{itemize} 
+    \item StartConsumingCommand - The consumer is to start
+        consuming from each of the partitions within the record.  
+    \item StopConsumingCommand - The consumer stops consuming from the
+        partitions specified in the record.  
+\end{itemize}
 
 The fourth phase starts with the consumer determining whether there are any
-messages in it's metadata queue (the partition it was assigned from the
-\lstinline[language=Python]{data-engineering-controller} topic). If there are
+messages in its metadata queue (the partition it was assigned from the
+\lstinline[language=Python]{consumer.metadata} topic). If there are
 none, the consumer's state isn't changed, and the phase is finalized. Otherwise,
 if there are any messages in the queue, the consumer goes through the process of
 consuming all the messages in the metadata partition, and adds them to a Queue
@@ -379,12 +438,12 @@ variable \lstinline[language=Python]{current}. A copy of this set is made and
 assigned to a variable \lstinline[language=Python]{future}. While the queue is
 not empty, the front-most element is removed and assigned to a temporary
 variable \lstinline[language=Python]{changeState}. Depending on the command, if
-the record requests the consumer to start consuming from it's set of partitions
+the record requests the consumer to start consuming from its set of partitions
 then a union operation is performed between the
 \lstinline[language=Python]{future} and the
 \lstinline[language=Python]{changeState}. In turn, if the record is of type
-"StartConsumingCommand", the difference between future and change state is
-computed.
+"StopConsumingCommand", the difference between \lstinline{future} and
+\lstinline{changeState} is computed.
 
 Having processed the whole \lstinline[language=Python]{changeStateQueue}, future
 holds the new state the consumer has to change into. Lines
@@ -393,45 +452,44 @@ consumer's assignment into future's state.
 
 \subsubsection{Persisting Metadata}
 
-The final stage of the consumer goes through persisting the consumer's metadata
-in case the consumer fails and has to pick up the work it was last performing.
-The data to be persisted is the set of partitions it is currently consuming
-from. This means that a successful change in consumer metadata would only occur
-after the consumer successfully persists the data to it's persistent volume.
+The consumer's final stage has it persisting its metadata in case of failure
+requiring to pick up the work it was last performing, which avoids having the
+consumer reprocess its message queue. The data to be persisted is the set of
+partitions it is currently consuming from. A successful change in consumer
+metadata would only occur after the consumer successfully persists the data to
+its persistent volume.
 
-Since the consumer is a pod within a deployment in a Kubernetes cluster, the
-container responsible for this component starts with a clean slate. When the
-container is terminated the data written to disk is cleaned,  making it
-inaccessible for future reads outside of a single pods lifetime. This type of
-storage is named ephemeral as it has the same lifetime as the pod.
+When dealing with Kubernetes pods, by default the pod's storage is ephemeral,
+which means that the group of containers starts with a clean slate, and when
+terminated the data written to disk is cleaned, making it inacessible for future
+reads outside of a single pods lifetime.
 
-Kubernetes provides with volumes which can be of type ephemeral or persistent
-(it's lifetime is independent of the pod's). 
-
-A persistent volume (PV) can be created static or dynamically, and is a resource
-within the cluster. A persistent volume claim (PVC), is a method of abstraction
-which allows a user to request for storage. This request, then tries to match
-the claim to one of the available resources, and if there are none available,
-then a new persistent volume can be created dynamically if the Storage Class is
-defined. The mapping between PV and PVC is one-to-one.
+Kubernetes provides volumes which can be of type ephemeral or persistent (its
+lifetime is independent of the pod's). A persistent volume (PV) can be created
+static or dynamically, and is a resource within the cluster. A persistent volume
+claim (PVC), is a method of abstraction which allows a user to request for
+storage. This request, then tries to match the claim to one of the available
+resources (PVs), and if there are none available, then a new persistent volume can be
+created dynamically if the Storage Class is defined. The mapping between PV and
+PVC is one-to-one.
 
 This consumer uses both types of volumes, since the downwardAPI is of type
-ephemeral and it provides the consumer with it's context, giving it access to
-it's deployment's name (data the consumer requires for it to know which
-partition to consume from in the data-engineering-controller [metadata] topic).
-As for the persistent volume, the consumer will use this type of volume to
-persist the data for it's current consumption state.
+ephemeral and it provides the consumer with its context, giving it access to
+its deployment's name (data the consumer requires for it to know which
+partition to consume from in the consumer.metadata topic).  As for the
+persistent volume, the consumer will use this type of volume to persist the data
+for its current consumption state. If the consumer fails unexpectedly, then on
+startup, it just has to verify its state on the volume, and in case it was
+performing any tasks, it picks up where it left off.
 
-If the consumer fails unexpectedly, then on startup, it just has to verify it's
-state on the volume, and in case it was performing any tasks, it picks up where
-it left off.
-
-When stopping a consumer, to safely terminate it's tasks, the controller sends a
+When stopping a consumer, to safely terminate its tasks, the controller sends a
 StopConsumingCommand for all the partitions the consumer is currently assigned
 to. After the consumer acknowledges it acted to the command (it sends a
-StopConsumingEvent back to the controller
-\ref{sub:controller_communication_cosumer}), the controller then terminates the
-pod. The fact termination only occurs after the consumer updates it's metadata,
+StopConsumingEvent back to the controller), the controller then terminates the
+pod. This communication between the controller and the consumer is better
+described in section \ref{sub:controller_communication_cosumer}. 
+
+The fact termination only occurs after the consumer updates its metadata,
 implies the persistent volume is also updated to an empty set, which allows a
 new consumer of the same deployment to start off with a clean slate as should be
 the case, since the consumer was gracefully terminated.
@@ -441,41 +499,33 @@ the case, since the consumer was gracefully terminated.
 \label{c3subsub:consumer_maximum_capacity}
 
 The way the problem is formulated assumes the consumer is capable, when
-required, to achieve a maximum data consumption rate, still to be defined,
+required, to achieve a maximum data consumption rate (still to be defined),
 analogous to the capacity of a bin in a BPP.
 
 With the goal of attaining a value for this maximum bin capacity, the consumer
 was tested in 3 different scenarios, each requiring the consumer to be working
-at peak performance.
-
-Peak performance is defined as the case when the sum of the bytes still to be
-consumed from all the partitions the consumer is assigned to, is bigger than
-\lstinline[language=Python]{BATCH_BYTES}.
-
-The 3 testing scenarios aim to test the consumer's throughput while varying the
-number of tables it has to insert data into, the average amount of bytes
-available in each of the assigned partitions, and the number of partitions
-assigned to it.
+at peak performance.  Peak performance is defined as the case when the sum of
+the bytes still to be consumed from all the partitions the consumer is assigned
+to, is bigger than \lstinline[language=Python]{BATCH_BYTES}.  The 3 testing
+scenarios aim to test the consumer's throughput while varying the number of
+tables it has to insert data into, the average amount of bytes available in each
+of the assigned partitions, and the number of partitions assigned to it.
 
 The consequence of having more tables where data has to be inserted, directly
-affects the third phase by increasing the amount of asynchronous request that
-have to be made.
-
-As for reducing the average amount of bytes available in the partitions
-assigned, but still being able to make the consumer work at full capacity, aims
-to test the first phase of the algorithm, where the data has to be consumed from
-the partitions assigned from Kafka.
-
-This is the case since this high-level consumer is based on the Kafka client
-provided by the confluent\_kafka package. When the client begins, it starts a
-low level consumer implemented in C that runs in the background. As the
-low-level consumer runs, it buffers messages into a queue until the high level
-python consumer requests for what it has consumed with either
-\lstinline[language=Python]{poll()} or the
+affects the third phase by increasing the amount of asynchronous requests that
+have to be made.  As for reducing the average amount of bytes available in the
+partitions assigned, but still being able to make the consumer work at full
+capacity, aims to test the first phase of the algorithm, where the data has to
+be consumed from the partitions assigned from Kafka.  This is the case since
+this high-level consumer is based on the Kafka client provided by the
+confluent\_kafka package. When the client begins, it starts a low level consumer
+implemented in C that runs in the background. As the low-level consumer runs, it
+buffers messages into a queue until the high level python consumer requests for
+what it has consumed with either \lstinline[language=Python]{poll()} or the
 \lstinline[language=Python]{consume()} methods. The difference between these two
 methods is that the first returns a single message whereas the second returns a
 batch of messages defined by \lstinline[language=Python]{num_messages}, from the
-kafka client's buffer. 
+low level client's buffer. 
 
 To improve throughput, when a consumer requests for data from the broker, the
 broker attempts to batch data together before sending it back to the consumer.
@@ -495,112 +545,125 @@ time it takes for the consumer to gather
 required to fetch the data, as assigning partitions increases the probability of
 the consumer having to communicate with more brokers. 
 
-Another important definition is that the consumer is said to have reached it's
+Another important definition is that the consumer is said to have reached its
 steady state, when it is capable of fetching
 \lstinline[language=Python]{BATCH_BYTES} prior to
-\lstinline[language=Python]{WAIT_TIME_SECS} being triggered in it's first phase.
+\lstinline[language=Python]{WAIT_TIME_SECS} being triggered in its first phase.
 This reflects that the low-level consumer is capable of gathering the necessary
-amount of bytes into it's buffer, while the high-level consumer is running all
+amount of bytes into its buffer, while the high-level consumer is running all
 the remaining phases except the first of the insert cycle.
 
 For the following test cases, \lstinline[language=Python]{BATCH_BYTES = 5000000}
-and \lstinline[language=Python]{WAIT_TIME_SECS = 1}.
+and \lstinline[language=Python]{WAIT_TIME_SECS = 1}.  These values inherently
+reflect the time it takes for a consumer to go through each of its phases, and
+the rate at which it can consume data.
 
-These values inherently reflect the time it takes for a consumer to go through
-each of it's phases, and the rate at which it can consume data.
-
-\begin{table}[H] \centering \caption{Testing conditions to obtain consumer
-    maximum throughput measure.} \begin{tabular}{ |c|r|r|r|r| } \hline
+\begin{table}[H] 
+\centering 
+\caption{
+    Testing conditions to obtain consumer maximum throughput measure.
+} 
+    \begin{tabular}{ |c|r|r|r|r| } 
+        \hline
         \textbf{Test ID} & \textbf{Total Bytes} & \textbf{Average Bytes} &
-        \textbf{Number of Partitions} & \textbf{Number of Tables} \\ \hline Test
-    1 & $648058050$ & $20251814$ & $32$ & $1$ \\ Test 2 & $100140747$ & $863282$
-    & $116$ & $5$ \\ Test 3 & $678388069$ & $4711028$ & $144$ & $5$ \\ \hline
-    \end{tabular} \end{table}
+            \textbf{Number of Partitions} & \textbf{Number of Tables} \\ 
+        \hline 
+        Test 1 & $648058050$ & $20251814$ & $32$ & $1$ \\ 
+        Test 2 & $100140747$ & $863282$ & $116$ & $5$ \\ 
+        Test 3 & $678388069$ & $4711028$ & $144$ & $5$ \\ 
+        \hline
+    \end{tabular} 
+\end{table}
 
 Test 1 has the consumer fetching records which are all directed to the same
-    table, and every partition it visits has enough bytes to satisfy the
-    max.fetch.bytes condition, optimizing the throughput between the low-level
-    consumer and the brokers, as the data is batched together. Since there is
-    only one table to send the data to, the third phase is also optimized as
-    there will only be a single BatchList instance.
+table, and every partition it visits has enough bytes to satisfy the
+max.fetch.bytes condition, optimizing the throughput between the low-level
+consumer and the brokers, as the data is batched together. Since there is only
+one table to send the data to, the third phase is also optimized as there will
+only be a single BatchList instance.
 
 As for Test 2, the increased number of partitions and the reduced average amount
-    of bytes in each partition has the consumer polling more brokers to gather
-    \lstinline[language=Python]{BATCH_BYTES}, increasing the time the consumer
-    takes in the first phase. Although the time taken in this phase increased
-    The average time it takes the consumer to fetch
-    \lstinline[language=Python]{BATCH_BYTES} from the kafka cluster, indicates
-    that the consumer still manages to reach its steady state.
+of bytes in each partition has the consumer polling more brokers to gather
+\lstinline[language=Python]{BATCH_BYTES}, increasing the time the consumer takes
+in the first phase. Although the time taken in this phase increased The average
+time it takes the consumer to fetch \lstinline[language=Python]{BATCH_BYTES}
+from the kafka cluster, indicates that the consumer still manages to reach its
+steady state.
 
 Lastly, Test 3 combines both of the previous scenarios, where there is more data
-    per partition to be sent back to the consumer, although some iterations
-    require the consumer to send data to 5 different tables since the data
-    originates from partitions that belong to different topics.
+per partition to be sent back to the consumer, although some iterations require
+the consumer to send data to 5 different tables since the data originates from
+partitions that belong to different topics.
 
 The metrics that were deemed important for the analysis of the consumer's
-    behaviour, were: Time to go through Phase 1 ($\Delta t_{P1}$); Time to go
-    through Phase 2 ($\Delta t_{P2}$); Time to go through Phase 3 ($\Delta
-    t_{P3}$); Total cycle time ($\Delta t$); Measured cycle throughput.
+behaviour, were: Time to go through Phase 1 ($\Delta t_{P1}$); Time to go
+through Phase 2 ($\Delta t_{P2}$); Time to go through Phase 3 ($\Delta t_{P3}$);
+Total cycle time ($\Delta t$); Measured cycle throughput.
 
 Each of these parameters is statistically summarized in the following table:
-    \begin{table}[H] \centering \caption{Statistical summary of the metrics }
-        \begin{tabular}{ |c|l|r|r|r|r|r| } \hline \textbf{Test ID} &
-            \textbf{Summary Measure} & \textbf{$\Delta t_{P1}$} &
-            \textbf{$\Delta t_{P2}$} & \textbf{$\Delta t_{P3}$} &
-            \textbf{$\Delta t$} & \textbf{Throughput} \\ \hline
-            \multirow{2}{*}{Test 1} & Average            & 0.394  & 0.000775 &
-            1.69   & 2.08 &                              2417215.33 \\ &
-            Standard Deviation & 0.0338 & 0.00620  & 0.0941 & 0.101 & 99234.23
-            \\ \hline \multirow{2}{*}{Test 2} & Average            & 0.462  &
-            0.00684 & 1.72 & 2.18 &                                 2307501.21
-            \\ &  Standard Deviation & 0.125 & 0.001600  & 0.0946 & 0.169 &
-            171231.27 \\ \hline \multirow{2}{*}{Test 3} & Average            &
-            0.397  & 0.00896 & 1.68   & 2.08 &
-            4218220.20 \\ &  Standard Deviation & 0.0466 & 0.00619  & 0.105 &
-        0.121 & 132017.37 \\ \hline \end{tabular} \end{table}
+\begin{table}[H] 
+\centering 
+\caption{Statistical summary of the metrics }
+    \begin{tabular}{ |c|l|r|r|r|r|r| } 
+        \hline 
+        \textbf{Test ID} & \textbf{Summary Measure} & \textbf{$\Delta t_{P1}$} &
+            \textbf{$\Delta t_{P2}$} & \textbf{$\Delta t_{P3}$} & \textbf{$\Delta t$} & \textbf{Throughput} \\ 
+            \hline
+            \multirow{2}{*}{Test 1} 
+            & Average & 0.394  & 0.000775 & 1.69 & 2.08 & 2418855 \\ 
+            & Standard Deviation & 0.0338 & 0.00620  & 0.0941 & 0.101 & 97853 \\ 
+            \hline 
+            \multirow{2}{*}{Test 2} 
+            & Average & 0.462 & 0.00684 & 1.72 & 2.18 & 2307501 \\ 
+            & Standard Deviation & 0.125 & 0.001600  & 0.0946 & 0.169 & 171231 \\ 
+            \hline \multirow{2}{*}{Test 3} 
+            & Average & 0.397  & 0.00896 & 1.68 & 2.08 & 2418220 \\ 
+            &  Standard Deviation & 0.0466 & 0.00619 & 0.105 & 0.121 & 132017 \\ 
+    \hline 
+    \end{tabular} 
+\end{table}
 
 The following graph demonstrates how the consumer is capable of maintaining a
-        stable speed above a threshold of $2 Mbytes/s$, when it finds itself in
-        it's steady state (capable of consuming $5 Mbytes$ before
-        \lstinline[language=Python]{WAIT_TIME_SECS} is triggered), sharing a
-        mode between the three different testing scenarios around $2.3
-        Mbytes/s$.
+stable speed above a threshold of $2 Mbytes/s$, when it finds itself in its
+steady state (capable of consuming $5 Mbytes$ before
+\lstinline[language=Python]{WAIT_TIME_SECS} is triggered), sharing a mode
+between the three different testing scenarios around $2.3 Mbytes/s$.
 
 \begin{figure}[H] \centering
-\includegraphics[width=\textwidth]{images/consumer/Consumer_Capacity.png}
-\caption{Density Plot for the consumer's measured throughput in the 3 testing
-conditions.} \label{fig:consumer_capacity} \end{figure}
+\includegraphics[width=0.7\textwidth]{images/consumer/density.png}
+\caption{
+    Density Plot for the consumer's measured throughput in the 3 testing
+    conditions.
+} 
+\label{fig:consumer_capacity} 
+\end{figure}
 
 \subsubsection{Bin Capacity} \label{result:bin capacity}
 
 Two measures are defined which are to be used in the sections to come. The
-        \lstinline[language=Python]{ALGORITHM_CAPACITY}, is the constant bin
-        size that will be used when running all the heuristic algorithms when
-        solving the dynamic BPP, whereas the
-        \lstinline[language=Python]{CONSUMER_CAPACITY} is the consumer's maximum
-        capacity, which if exceeded, must trigger a new configuration as for
-        which partition should be assigned to which consumers.
+\lstinline[language=Python]{ALGORITHM_CAPACITY}, is the constant bin size that
+will be used when running all the heuristic algorithms when solving the dynamic
+BPP, whereas the \lstinline[language=Python]{CONSUMER_CAPACITY} is the
+consumer's maximum capacity, which if exceeded, must trigger a new configuration
+as for which partition should be assigned to which consumers.
 
 The reason for having defined these two configuration parameters differently are
-        due to the problem's dynamic nature. Since the measured write speed for
-        each partition varies between each measurement, after executing the BPP
-        algorithm for a single measurement, it is common to have bin's filled
-        close to their capacity, which would lead to excessive rebalancing
-        computations if the algorithm and consumer capacity were defined using
-        the same value. Defining the Consumer's capacity to a value higher than
-        the algorithm's perceived capacity, reduces the number of rebalances
-        triggered, but also at the cost of the each configuration having more
-        consumers than required. 
+due to the problem's dynamic nature. Since the measured write speed for each
+partition varies between each measurement, after executing the BPP algorithm for
+a single measurement, it is common to have bin's filled close to their capacity,
+which would lead to excessive rebalancing computations if the algorithm and
+consumer capacity were defined using the same value. Defining the Consumer's
+capacity to a value higher than the algorithm's perceived capacity, reduces the
+number of rebalances triggered, at the cost of a reduced bin capacity. 
 
-From the graph \ref{fig:consumer_capacity}, the Consumer's capacity is set to $2
-        Mbytes$, whereas the Algorithm's capacity is defined as $1.5 Mbytes$.
-        These are the values used for the remaining part of the work.
-
-It is important to note that these values are only valid when the consumers are
-        deployed in the environment where they were tested. As long as the
-        consumers share the same stable environment, the maximum capacity does
-        not change with the parameters previously mentioned, and therefore the
-        test can be run again to get these same baseline values. 
+From graph \ref{fig:consumer_capacity}, the Consumer's capacity is set to $2
+Mbytes$, whereas the Algorithm's capacity is defined as $1.5 Mbytes$.  These are
+the values used for the remaining part of the work.  It is important to note
+that these values are only valid when the consumers are deployed in the
+environment where they were tested. Having executed the test in multiple
+environments, it can be said that the consumer's maximum capacity does not
+change between consumer instances as long as the environment is similar for all
+consumers.
 
 \section{Controller/Orchestrator} \label{component:controller}
 
@@ -622,7 +685,7 @@ write speed of each partition (the size of the items). This implies that a
 viable solution in one iteration, might not be viable in a future iteration when
 the sizes have changed.
 
-At any given time, no consumer within the consumer group can have it's capacity
+At any given time, no consumer within the consumer group can have its capacity
 exceeded by the cumulative write speed of the partitions assigned to it, and if
 it is, then a rebalance has to be triggered. The same applies in case a
 partition has not yet been assigned a consumer.
@@ -642,24 +705,18 @@ rebalancing procedure.
 
 As has been described, there are three different components in the system that
 work together to get the data from Kafka into bigquery. To do so, each component
-has to be able to communicate with one another to inform any change in state. 
-
+has to be able to communicate with one another to inform any change in state.
 For this reason, the following diagram describes how the pieces fit together,
 and communicate with one another.
 
-\begin{figure}[H] \centering
-\includegraphics[width=\textwidth]{images/controller/System Design.png}
-\caption{System architecture deployment diagram} \label{fig:system_architecture}
-\end{figure}
-
-As shown in the diagram, there are two main topics that will be responsible for
-providing an asynchronous communication between the 3 different entities of the
-system. The data-engineering-monitor topic, is where the monitor process sends
-the speed measurements for the controller to consult, whereas the
-data-engineering-controller topic is where the controller sends messages to each
-consumer to inform the change in their state. Partition 0 of this topic is
-reserved for the controller so the consumers always know how to acknowledge
-their change in state.
+As shown in figure \ref{fig:system_architecture}, there are two main topics that
+will be responsible for providing an asynchronous communication between the 3
+different entities of the system. The \lstinline{monitor.writeSpeed} topic, is where
+the monitor process sends the speed measurements for the controller to consult,
+whereas the consumer.metadata topic is where the controller sends
+messages to each consumer to inform the change in their state. Partition 0 of
+this topic is reserved for the controller so the consumers always know how to
+acknowledge their change in state.
 
 When using a Kafka topic to communicate between the consumers and the controller
 there are certain requirements that need to be complied with. 
@@ -696,7 +753,7 @@ partition, as kafka only guarantees message read order when the messages belong
 to the same partition. Kafka already does this by allowing a message to have a
 key attribute which is then hashed to determine the partition in which the
 message is to be inserted. The issue with this approach is if the number of
-partitions in the data-engineering-controller topic increases, the key might not
+partitions in the consumer.metadata topic increases, the key might not
 send the messages to the same partition as before. As such, each consumer is
 given an incremental id ($1, 2, ...$), which represents the partition where
 change in state information has to be sent for the consumer to read (both
@@ -721,7 +778,7 @@ This state is where the controller uses the information provided by the monitor
 component (\ref{component:Monitor}), to determine whether it has to recompute
 the consumer group's assignment. The first step the controller goes through in
 this state is to read the last speed measurement the monitor component added to
-the data-engineering-monitor topic.
+the \lstinline{monitor.writeSpeed} topic.
 
 The controller then updates each of the partition's speeds, which in turn
 updates the cumulative speed of each consumer. As can be seen in figure
@@ -942,7 +999,7 @@ To better illustrate the performance of the algorithms for each measurement
 
 In \ref{fig:relative_nconsumers}, each partition starts with a random speed
     between $[0,100]\%$ of \lstinline[language=Python]{ALGORITHM_CAPACITY}. The
-    worst performing algorithm is the next fit followed by it's decreasing
+    worst performing algorithm is the next fit followed by its decreasing
     version, since every time a partition is to be assigned, the algorithm only
     verifies if it fits in the last created bin, as opposed to considering all
     the already existing bins. The remaining any fit decreasing algorithms, are
@@ -1018,7 +1075,7 @@ state. Since there cannot be any concurrent read of a partition by two consumers
 of the same consumer group, when rebalancing a partition, the controller first
 has to inform the consumer currently assigned to the partition to stop consuming
 from it, and only after the consumer acknowledges having acted to the request,
-can it inform the new consumer of it's new assignment.
+can it inform the new consumer of its new assignment.
 
 This state not only handles this message exchange but it also creates and
 deletes consumer resources from the Kubernetes cluster. 
@@ -1049,14 +1106,14 @@ each consumer list: \begin{itemize} \item next state has a consumer at $i$ but
                     - This means that no creation or deletion operation has to
                     be performed for this bin, and the operations to perform in
                     this case are only communicating to the already existing
-                    consumer the difference in it's assignment. 
+                    consumer the difference in its assignment. 
     
     The same consumer has two different sets of partitions assigned to it
         represented in the two different group states.
         \lstinline[language=Python]{next_assignment} will denote the set of
         partitions attributed to the consumer's state in the next group's
         context, and \lstinline[language=Python]{current_assignment} is defined
-        as the consumer's set of partitions in it's current state.
+        as the consumer's set of partitions in its current state.
     
     \begin{lstlisting}[language=Python] partitions_stop = current_assignment -
     next_assignment partitions_start = next_assignment - current_assignment
@@ -1150,7 +1207,7 @@ start action, the partition is added to the StartConsumingCommand directed to
 the new consumer. 
 
 When the controller sends a message to a consumer, it sends it to the same
-partition as the consumer's id in the data-engineering-controller topic. As for
+partition as the consumer's id in the consumer.metadata topic. As for
 the consumer, to communicate the event of having reacted to one of the
 controller's commands, the record has to be sent to the partition with id $0$ of
 the same topic, as depicted in the diagram (\ref{fig:system_architecture}).
