@@ -12,8 +12,9 @@ disregarding the cost of the number of instances deployed.
 The aim is to achieve a deterministic approach as for the number of consumers
 required working in parallel, so as to guarantee that the rate of production
 into a topic is not higher than the rate of consumption, which would lead to
-messages being accumulated in a topic making the lag increase between the last
-message inserted and the last message read by the consumer group.
+messages being accumulated in a topic leading to the lag between the last
+message inserted and the last message read by the consumer group increase with
+time.
 
 A Kafka topic is subdivided into several partitions, distributed within the
 several brokers of the Kafka cluster. When sending a message into a topic, if a
@@ -71,7 +72,7 @@ to be executed into account.
         &&\sum_{i \in B} y_i 
             && \\
     &\text{subject to} \quad
-        && \sum_{j \in L} \hat w_j(t) \cdot x_{ij} \leq y_i. \quad      
+        && \sum_{j \in L} \hat w_j(t) \cdot x_{ij} \leq y_i \quad      
             && \forall \; i \in B \\
     &   && \sum_{i \in B} x_{ij} = 1, \quad                             
             && \forall \; j \in L \\
@@ -89,13 +90,13 @@ traditional BPP.
 
 \begin{figure}[htb!] \centering
     \includegraphics[width=\textwidth]{images/controller/System Design.png}
-    \caption{System architecture deployment diagram} 
+    \caption{System architecture.} 
     \label{fig:system_architecture}
 \end{figure}
 
 As presented in figure \ref{fig:system_architecture}, there are three components
 that interact with one another in order to model the problem as a BPP, and to
-provide a fully dynamic pipeline capable of autoscaliing based on the current
+provide a fully dynamic pipeline capable of autoscaling based on the current
 load of data being produced to the partitions of interest.
 
 The monitor process is responsible for measuring the write speed of each
@@ -524,13 +525,13 @@ buffers messages into a queue until the high level python consumer requests for
 what it has consumed with either \lstinline[language=Python]{poll()} or the
 \lstinline[language=Python]{consume()} methods. The difference between these two
 methods is that the first returns a single message whereas the second returns a
-batch of messages defined by \lstinline[language=Python]{num_messages}, from the
+batch of messages defined by \lstinline{num_messages}, from the
 low level client's buffer. 
 
 To improve throughput, when a consumer requests for data from the broker, the
 broker attempts to batch data together before sending it back to the consumer.
-\lstinline[language=Python]{fetch.max.bytes} and
-\lstinline[language=Python]{fetch.max.wait.ms} define how a single request is
+\lstinline{fetch.max.bytes} and
+\lstinline{fetch.max.wait.ms} define how a single request is
 handled by the broker, wherein the first determines the maximum amount of bytes
 returned by the broker, and the second, the amount of time the broker can wait
 before returning the data if fetch.max.bytes is not satisfied.
@@ -669,78 +670,95 @@ consumers.
 
 The controller is the component of the system which is responsible for
 orchestrating and managing the consumer group that is intended to consume the
-data from the partitions of interest. 
-
-The problem is modeled as a dynamic bin packing problem, where the size of each
-item is equivalent to the write speed of each partition, and the size of the
-container represents the maximum achievable speed of a consumer which has been
-provided by the data presented in \ref{result:bin capacity}.
-
-For clarity, for the following sections, consumer, container and bin will be
-used interchangeably, representing a consumer instance described in
-\ref{component:consumer}.
-
-This problem is different to the usual bin packing problem due to the changing
-write speed of each partition (the size of the items). This implies that a
-viable solution in one iteration, might not be viable in a future iteration when
-the sizes have changed.
+data from the partitions of interest.  The problem is modeled as a dynamic bin
+packing problem, where the size of each item is equivalent to the write speed of
+each partition, and the size of the container represents the maximum achievable
+speed of a consumer which has been provided by the data presented in section
+\ref{result:bin capacity}.
 
 At any given time, no consumer within the consumer group can have its capacity
 exceeded by the cumulative write speed of the partitions assigned to it, and if
-it is, then a rebalance has to be triggered. The same applies in case a
-partition has not yet been assigned a consumer.
+that is the case, then a rebalance has to be triggered. The same applies in case
+a partition has not yet been assigned a consumer.
 
 After the controller determines the state in which it wants its consumer group,
 it then creates the consumers that don't yet exist, communicates the change in
 assignment to each consumer in the group, followed by deleting the consumers
 that are not required in the new computed group's state.
 
-While rebalancing any partition, during the time the controller is informing the
-current consumer to stop reading from it to inform the new consumer to start
-doing so, the messages belonging to this partition are not being read. This is
-the new cost that has to be taken into consideration when dealing with the
-rebalancing procedure.
+\subsection{Rebalance Cost}
+\label{sub:rscore}
+
+Within this problem's context, rebalancing inevitably implies having the
+consumer group stop consuming from a partition, while the controller is
+reassigning the partition from one consumer to another (as there cannot be a
+concurrent read from the same partition by members of the same group).
+
+A new measure is presented to compute the the total rebalance cost (Rscore), of
+a new group's configuration. This metric represents the rate at which
+information is accumulating for each second that passes, given in consumer
+iterations per second.
+
+\begin{table}[H] 
+\centering 
+\caption{Data to compute the Rscore for an iteration.} 
+    \begin{tabular}{ |c|l| } 
+        \hline 
+        \textbf{Symbol} & \textbf{Description} \\ 
+        \hline 
+        $P_i$ & set of partitions that were rebalanced in iteration $i$ \\ 
+        $s(p)$ & outputs the write speed of partition $p$ \\ 
+        $C$ &  Constant that represents the maximum consumer capacity from
+            section \ref{result:bin capacity}\\ 
+        \hline 
+    \end{tabular} 
+\end{table}
+
+The following equation then presents the rebalance cost for a single
+iteration $i$ (Rscore).
+
+\begin{equation} 
+    R_i = \frac{1}{C}\sum_{p \in P_i} s(p) 
+\end{equation}
+
 
 \subsection{System Design}
 
 As has been described, there are three different components in the system that
 work together to get the data from Kafka into bigquery. To do so, each component
 has to be able to communicate with one another to inform any change in state.
-For this reason, the following diagram describes how the pieces fit together,
-and communicate with one another.
 
 As shown in figure \ref{fig:system_architecture}, there are two main topics that
 will be responsible for providing an asynchronous communication between the 3
-different entities of the system. The \lstinline{monitor.writeSpeed} topic, is where
-the monitor process sends the speed measurements for the controller to consult,
-whereas the consumer.metadata topic is where the controller sends
-messages to each consumer to inform the change in their state. Partition 0 of
-this topic is reserved for the controller so the consumers always know how to
-acknowledge their change in state.
+different entities of the system. The \lstinline{monitor.writeSpeed} topic, is
+where the monitor process sends the speed measurements for the controller to
+consult, whereas the \lstinline{consumer.metadata} topic is where the controller
+sends messages to each consumer to inform the change in their state. Partition 0
+of the \lstinline{consumer.metadata} topic is reserved for communication which
+is intended to reach the controller.
 
 When using a Kafka topic to communicate between the consumers and the controller
-there are certain requirements that need to be complied with. 
-
-The first, is that when the controller communicates with a consumer from the
-consumer group, it has to be guaranteed that the message reaches the intended
-consumer. 
+there are certain requirements that need to be complied with. The first, is that
+when the controller desires to communicate with a consumer from the consumer
+group, it has to be guaranteed that the message reaches the intended consumer. 
 
 Secondly, as will be common with this system, the controller will create and
 delete a single consumer multiple times in its lifecycle. The message offset a
 consumer starts on after restarting, has to be precisely the one where it left
 off before being shut down by the controller. This can be done leveraging
-kafka's \lstinline[language=Python]{group-id} property, defined in each consumer
-client, and so the system just has to guarantee that the consumer gets the same
-id as before.
+kafka's \lstinline{group-id} property defined in each consumer client, so the
+system just has to guarantee that the consumer gets the same id as before, and
+that no other client with the same id consumed messages from this consumer's
+queue.
 
 Thirdly, each consumer only reads messages which are intended to it. This would
 represent maximum efficiency in the information transmitted between both
-controller and consumer, since no process is reading messages that have to be
-ignored. To better understand this design requirement, the following scenario is
-described: It might happen that a certain number of consumers satisfies the
-controller's conditions, without any need to scale up or down the group. This
-would imply that the control messages sent by the controller are only read by
-the currently active consumers. When a new consumer is started by the
+controller and consumer, since no process is reading messages or data that has
+to be ignored. To better understand this design requirement, the following
+scenario is described: It might happen that a certain number of consumers
+satisfies the controller's conditions, without any need to scale up or down the
+group. This would imply that the control messages sent by the controller are
+only read by the current active consumers. When a new consumer is started by the
 controller, if the messages are shared, then there is a big queue of messages
 that have not yet been read by the new consumer since it was last up. For the
 new consumer to be able to read new control messages sent by the controller, it
@@ -753,7 +771,7 @@ partition, as kafka only guarantees message read order when the messages belong
 to the same partition. Kafka already does this by allowing a message to have a
 key attribute which is then hashed to determine the partition in which the
 message is to be inserted. The issue with this approach is if the number of
-partitions in the consumer.metadata topic increases, the key might not
+partitions in the \lstinline{consumer.metadata} topic increases, the key might not
 send the messages to the same partition as before. As such, each consumer is
 given an incremental id ($1, 2, ...$), which represents the partition where
 change in state information has to be sent for the consumer to read (both
@@ -768,34 +786,39 @@ represents the same group's state.
 The following diagram shows the high level architecture of the controller
 process:
 
-\begin{figure}[H] \centering
+\begin{figure}[H] 
+\centering
 \includegraphics[width=\textwidth]{images/controller/state_machine.png}
-\caption{Controller State Machine.} \label{fig:state_machine} \end{figure}
+\caption{Controller State Machine.} 
+\label{fig:state_machine} 
+\end{figure}
 
 \subsection{State Sentinel}
 
 This state is where the controller uses the information provided by the monitor
-component (\ref{component:Monitor}), to determine whether it has to recompute
-the consumer group's assignment. The first step the controller goes through in
-this state is to read the last speed measurement the monitor component added to
-the \lstinline{monitor.writeSpeed} topic.
+component described in section \ref{component:Monitor}, to determine whether it
+has to recompute the consumer group's assignment. The first step the controller
+goes through in this state is to read the last speed measurement the monitor
+component added to the \lstinline{monitor.writeSpeed} topic.
 
 The controller then updates each of the partition's speeds, which in turn
 updates the cumulative speed of each consumer. As can be seen in figure
 \ref{fig:state_machine}, there are three transitions that can lead to the
 controller re-computing the current consumer group's assignment:
-\begin{enumerate} \item \textbf{Consumer Capacity Exceeded} - This transition is
-        triggered if the cumulative speed of all the partitions assigned to any
-    consumer, exceeds the maximum consumer capacity measured in \ref{result:bin
-capacity}.  \item \textbf{Unassigned Partition} - If there is any partition
-    within the last speed measurement that is not currently assigned to a
-        consumer, then this transition is triggered.  \item \textbf{Sentinel
-            Timeout} - One of the controller's configurations, is a parameter
-            \lstinline[language=Python]{MAX_S1_TIME} which indicates the maximum
-            amount of time the controller can spend in the sentinel state
-            without triggering a rebalance. This trigger is to have a condition
-            that runs the algorithm to verify if downscaling is viable, as the
-            other triggers are directed to upscaling conditions.
+\begin{enumerate} 
+    \item \textbf{Consumer Capacity Exceeded} - This transition is triggered if
+        the cumulative speed of all the partitions assigned to any consumer,
+        exceeds \lstinline{CONSUMER_CAPACITY} obtained in section
+        \ref{result:bin capacity}.  
+    \item \textbf{Unassigned Partition} - If there is any partition within the
+        last speed measurement that is not currently assigned to a consumer,
+        then this transition is triggered.  
+    \item \textbf{Sentinel Timeout} - One of the controller's configurations, is
+        a parameter \lstinline{MAX_S1_TIME} which indicates the
+        maximum amount of time the controller can spend in the sentinel state
+        without triggering a rebalance. This trigger is to have a condition that
+        runs the algorithm to verify if downscaling is viable, as the other
+        triggers are directed to upscaling conditions.
 \end{enumerate}
 
 \subsection{State Reassign Algorithm}
@@ -809,114 +832,125 @@ assignment. The algorithms implemented are the already existing Next Fit, First
 Fit, Worst Fit, Best Fit, and each of the previous algorithms' decreasing
 versions, and modified versions of the Best and Worst Fit algorithms. 
 
-In the implementation of the existing approximation algorithms, another step was
-included during the creation of the bins which does not affect the outcome in
-terms of number of consumers. If the consumer that is currently assigned to the
-partition has not yet been created in the future assignment, this is the bin
+In the implementation of the existing approximation algorithms (AA), another step was
+included in the bin creation process which does not affect the outcome in terms
+of number of consumers of the AA. If the consumer that is currently assigned to
+the partition has not yet been created in the future assignment, this is the bin
 that is created, otherwise, the lowest index bin that does not yet exist is the
 one created.
- 
-\begin{figure}[H] \centering
+
+\begin{figure}[H] 
+\centering
 \includegraphics[width=0.6\textwidth]{images/controller/ApproximationAlgorithm_NewBin.png}
-\caption{New bin creation procedure when performing an approximation algorithm.}
-\label{fig:approximation_bin_creation} \end{figure}
+\caption{
+    New bin creation procedure when executing an existing approximation algorithm.
+}
+\label{fig:approximation_bin_creation} 
+\end{figure}
 
 Figure \ref{fig:approximation_bin_creation} illustrates this process, wherein
 the first row of consumer's (grey containers) represents the current consumer
 group's state, and the second the new consumer group assignment that is being
-computed by the controller. Partitions are represented in red and white, red
+computed by the controller. Partitions are represented in blue and black, blue
 being the partition currently being analyzed by the controller. In this example,
-the red partition currently finds itself in the consumer 2. When analysing the
-partition, the controller verifies if the partition fits in any of the existing
-partitions. Since it does not fit, and another consumer has to be created for
-this partition, the new consumer is the same as the one it is currently
-assigned, therefore occurring no rebalance for this partition.
+the blue partition currently finds itself assigned to consumer 2. When analysing
+the partition, the controller verifies if the partition fits in any of the
+existing consumers. Since it does not fit, and another consumer has to be
+created to assign this partition, the controller verifies if the consumer that
+is currently assigned already exists in the new group's state. Since this is not
+the case, the controller proceeds to creating the same consumer and assigning
+the current partition to the new bin.
 
 This is not presented as a modification to these algorithms as their
-functionality does not change with this approach to for a bin's creation, as it
-simply adapts the algorithms to the rebalancing problem at hand, improving it as
-compared to always creating the lowest index bin, as that would imply
-rebalancing partitions more often.
+functionality does not change with this approach, it simply adapts the
+algorithms to the rebalancing problem at hand, improving it as compared to
+always creating the lowest index bin, as that would imply rebalancing partitions
+more often.
 
-\subsubsection{Modified Any Fit Algorithms}
+\subsection{Modified Any Fit Algorithms}
 \label{subsub:modified_any_fit}
 
-The motivation to modifying the existing Any Fit algorithms, is that the item
-reassignment is not the problem they are trying to solve, they simply aim to
-reduce the amount of active bins for a certain list of items. 
-
-Within this problem's context, rebalancing inevitably implies having the
-consumer group to stop consuming from a partition, while the controller is
-reassigning the partition from one consumer to another (as there cannot be a
-concurrent read from the same partition).
-
-A new measure is presented to compute the the total rebalance cost (Rscore), of
-a new group's configuration. This metric represents the rate at which
-information is accumulating for each second that passes, given in consumer
-iterations per second.
-
-\begin{table}[H] \centering \caption{Data to compute the Rscore for an
-    iteration.} \begin{tabular}{ |c|l| } \hline \textbf{Symbol} &
-        \textbf{Description} \\ \hline $P_i$ & set of partitions that were
-        rebalanced in iteration $i$ \\ $s(p)$ & outputs the write speed of
-        partition $p$ \\ $R_i$  & Computed total Rscore for iteration $i$ \\ $C$
-    &  Constant that represents the maximum consumer capacity from
-    \ref{result:bin capacity}\\ \hline \end{tabular} \end{table}
-
-The following equation then presents the cost of rebalancing for a single
-    iteration $i$.
-
-\begin{equation} R_i = \frac{1}{C}\sum_{p \in P_i} s(p) \end{equation}
+The motivation to modifying the existing Any Fit algorithms, is that the
+existing algorithms only focus on reducing the amount of bins used to pack
+a set of items, disregarding the cost associated with reassigning items.
 
 Since the controller has access to the speed measurements of all partitions and
-    it does not require to read and assign each partition in any particular
-    order, this bin packing problem can be categorized as offline.
+it does not require to read and assign each partition in any particular order,
+this bin packing problem can be categorized as offline.
 
-Different from the previous decreasing versions of the Any Fit algorithms which
-    have already been described in \ref{sub:Approximation Algorithms and
-    Heuristics}, this algorithm will not sort the partitions, but in turn the
-    consumers (bins).
+Given the current consumer group's state (the partitions assigned to each
+consumer), and a set of unassigned partitions, the modified algorithms differ
+from the previous decreasing versions of the Any fit algorithms described in
+section \ref{section:AA}, wherein this type of algorithm does not sort the set
+of items, but in turn the consumers of a consumer group based on their
+assignment. 
 
-There will be 2 main approaches to sorting the consumers: \begin{itemize} \item
-        Sorting each consumer based on their current cumulative speed
-    (cumulative sort); \item Sorting each consumer based on the partition
-        assigned to it that has the biggest measured write speed (max partition
-        sort).  \end{itemize}
-
-After sorting the current consumer group using one of the above strategies, the
-    procedure is as follows:
-
-\IncMargin{1em} \begin{algorithm}[h]
-    \SetKwData{Left}{left}\SetKwData{This}{this}\SetKwData{Up}{up}
-    \SetKwFunction{Union}{Union}\SetKwFunction{FindCompress}{FindCompress}
-    \SetKwInOut{Input}{input}\SetKwInOut{Output}{output} \Input{current consumer
-    group C and set of unassigned partitions U} \Output{consumer group N which
-    is the next state for the consumer group} \BlankLine N $\leftarrow$ new
-    ConsumerList(assign\_strategy=("BF" | "WF"))\; sorted\_group $\leftarrow$
-    sort(C, sort\_strategy=("cumulative" | "max partition"))\; \For{consumer
-    $\in$ sorted\_group}{ Set<Partition> partitions $\gets$
-    consumer.assignedPartitions()\; List<Partition> sorted\_partitions
-    $\leftarrow$ sort(partitions, reverse=True)\; \For{i $\leftarrow$
-    length(sorted\_partitions)-1 \KwTo 0}{ partition $\leftarrow$
-    sorted\_partitions[i]\; result $\leftarrow$ assignExisting(N, partition)\;
-    \If{result $==$ False}{ break\; } remove(sorted\_partitions, partition)\; }
-    \If{sorted\_partitions.length() == 0}{ continue\; } createConsumer(N,
-    consumer)\; \For{partition $\in$ sorted\_partitions}{ result $\leftarrow$
-    assignCurrent(N, partition, consumer)\; \If{result $==$ False}{ break\; }
-    remove(sorted\_partitions, partition)\; } extend(U, sorted\_partitions)\; }
-    sorted\_unassigned $\leftarrow$ sort(U, reverse=True)\; \For{partition $\in$
-    sorted\_unassigned}{ assign(N, partition)\; } \KwRet{N} \caption{Modified
-Any Fit Pseudo Code}\label{algo:MBPP} \end{algorithm}\DecMargin{1em}
+There will be 2 main approaches to sorting the consumers: 
+\begin{itemize} 
+    \item Sorting each consumer based on the cumulative speed of all partitions
+        assigned to it (cumulative sort); 
+    \item Sorting each consumer based on the partition assigned to it that has
+        the biggest measured write speed (max partition sort).  
+\end{itemize}
 
 
-For each consumer in the sorted consumer group, the partitions assigned to the
-    consumer are sorted based on their write speed. From smallest to biggest,
-    each partition is inserted into one of the bins that have already been
-    created in the future assignment, based on one of the any fit strategies,
-    which in the tested implementation, can either be with a Best or Worst Fit
-    strategy. If the insert is successful, then the partition is removed from
-    the sorted list of partitions, otherwise, if there is no existing bin that
-    can hold the partition, then the current consumer assigned to it is created. 
+\IncMargin{1em} 
+\begin{algorithm}[htb!]
+    \SetKwData{Left}{left}
+    \SetKwData{This}{this}
+    \SetKwData{Up}{up}
+    \SetKwFunction{Union}{Union}
+    \SetKwFunction{FindCompress}{FindCompress}
+    \SetKwInOut{Input}{input}
+    \SetKwInOut{Output}{output} 
+    \Input{current consumer group C and set of unassigned partitions U} 
+    \Output{consumer group N which is the next state for the consumer group} 
+    \BlankLine 
+    N $\leftarrow$ new ConsumerList(assign\_strategy=("BF" | "WF"))\; 
+    sorted\_group $\leftarrow$ sort(C, sort\_strategy=("cumulative" | "max partition"))\; 
+    \For{consumer $\in$ sorted\_group}{ 
+        Set<Partition> partitions $\gets$ consumer.assignedPartitions()\; 
+        List<Partition> sorted\_partitions $\leftarrow$ sort(partitions, reverse=True)\; 
+        \For{i $\leftarrow$ length(sorted\_partitions)-1 \KwTo 0}{ 
+            partition $\leftarrow$ sorted\_partitions[i]\; 
+            result $\leftarrow$ assignExisting(N, partition)\;
+            \If{result $==$ False}{ 
+                break\; 
+            } 
+            remove(sorted\_partitions, partition)\; 
+        }
+        \If{sorted\_partitions.length() == 0}{
+            continue\; 
+        } 
+        createConsumer(N, consumer)\; 
+        \For{partition $\in$ sorted\_partitions}{ 
+            result $\leftarrow$ assignCurrent(N, partition, consumer)\; 
+            \If{result $==$ False}{ 
+                break\; 
+            }
+            remove(sorted\_partitions, partition)\; 
+        } 
+        extend(U, sorted\_partitions)\; 
+    }
+    sorted\_unassigned $\leftarrow$ sort(U, reverse=True)\; 
+    \For{partition $\in$ sorted\_unassigned}{ 
+        assign(N, partition)\; 
+    } 
+    \KwRet{N} 
+\caption{Modified Any Fit Pseudo Code}
+\label{algo:MBPP} 
+\end{algorithm}
+\DecMargin{1em}
+
+After sorting the current consumer group using one of the above strategies, for
+each consumer in the sorted consumer group, the partitions assigned to the
+consumer are sorted based on their write speed. From smallest to biggest, each
+partition is inserted into one of the bins that have already been created in the
+future assignment, based on one of the any fit strategies, which can either be
+the Best or Worst Fit strategy. If the insert is successful, then the partition
+is removed from the sorted list of partitions, otherwise, if there is no
+existing bin that can hold the partition, then the current consumer assigned to
+it is created. 
 
 The remaining partitions in the sorted list are now inserted into the newly
 created bin, from biggest to smallest, and removed from the sorted list if
@@ -926,147 +960,218 @@ of unassigned partitions.
 
 After performing the same procedure over all consumers, there is now a set of
 partitions which have not been assigned to any of the consumers in the future
-assignment. These partitions are first sorted in decreasing order (based on
-their measured write speed), and each partition is assigned using their
-respective any fit strategy.
+assignment. The final stage involves first sorting the unassigned partitions in
+decreasing order (based on their measured write speed), and each partition is
+assigned a consumer from the new consumer group using their respective any fit
+strategy.
 
-\begin{table}[H] \centering \caption{Modified implementations of the any fit
-    algorithms.} \begin{tabular}{ |c|c|c| } \hline \textbf{Algorithm} &
-        \textbf{Assign Strategy} & \textbf{Consumer Sorting Strategy} \\ \hline
-        Modified Worst Fit & Worst Fit & cumulative write speed \\ Modified Best
-        Fit & Best Fit & cumulative write speed \\ Modified Worst Fit Partition
-        & Worst Fit & biggest partition write speed \\ Modified Best Fit
-        Partition &  Best Fit & biggest partition write speed \\ \hline
-    \end{tabular} \end{table}
+\begin{table}[H] 
+\centering 
+\caption{Modified implementations of the any fit algorithms.} 
+\begin{tabular}{ |c|c|c| } 
+    \hline 
+    \textbf{Algorithm} & \textbf{Assign Strategy} & \textbf{Consumer Sorting Strategy} \\ 
+    \hline
+    Modified Worst Fit & Worst Fit & cumulative write speed \\ 
+    Modified Best Fit & Best Fit & cumulative write speed \\ 
+    Modified Worst Fit Partition & Worst Fit & max partition write speed \\ 
+    Modified Best Fit Partition &  Best Fit & max partition write speed \\
+    \hline
+\end{tabular} 
+\end{table}
 
-\subsubsection{Testing} \label{c3subsub:testing}
 
-To evaluate the performance of each of these algorithms, two metrics were used:
-    The relative difference in the number of consumers of each algorithm to the
-    approximation algorithm that presented the least amount of consumers; The
-    Rscore of the algorithm's new configuration.
+\subsubsection{Testing Procedure} \label{c3subsub:testing}
 
-\begin{table}[H] \centering \caption{Data to create the testing environment for
-    the approximation algorithms.} \label{table:testing_data} \begin{tabular}{
-            |c|l| } \hline \textbf{Symbol} & \textbf{Description} \\ \hline $P$
-        & Set of partitions assigned to the consumer group. \\ $s_p^i$ &
-    Provides the speed for partition $p$ in iteration $i$ \\ $\phi(\delta)$ &
-    Uniform random function that selects a value between $[-\delta, \delta]$\\
-    \hline \end{tabular} \end{table}
+To compare the performance between the implemented algorithms, a randomized
+stream of speed measurements (which represents the partition size in the BPP)
+was generated, and each algorithms was compared with respect to the same streams
+of data. 
 
-Given the data provided by \ref{table:testing_data}, the testing sequences for
-the algorithms was obtained as follows: \begin{enumerate} \item 200 different
-            partitions are created and given an initial speed. Four different
-            initial conditions for all partition were tested: Starting at $0\%$
-            of the \lstinline[language=Python]{ALGORITHM_CAPACITY}; Starting at
-            $50\%$ of the \lstinline[language=Python]{ALGORITHM_CAPACITY};
-            Starting at $100\%$ of the
-            \lstinline[language=Python]{ALGORITHM_CAPACITY}; Assigning each
-            partition a uniform random value between $[0, 100]\%$ of the
-            \lstinline[language=Python]{ALGORITHM_CAPACITY}.
-    
-    \item Given the initial conditions, a new measurement is created, where the
-        speed in the next measurement is calculated using: \begin{equation}
-        s_p^{i+1} = s_p^i + \phi(\delta) \times algorithm\_capacity, \quad
-        \forall p \in P, \end{equation} having $\phi(\delta)$ be evaluated every
-        new computation.
-    
-    \item The previous step is repeated for the next measurements until there
-are 500 measurements in a single sequence.  \end{enumerate}
+\begin{table}[H] 
+\centering 
+\caption{Data to generate the measurement streams.} 
+\label{table:testing_data} 
+\begin{tabular}{ |c|l| } 
+    \hline 
+    \textbf{Symbol} & \textbf{Description} \\ 
+    \hline 
+    $P$ & Set of partitions of interest for the consumer group. \\ 
+    $s_i(p)$ & Speed for a partition $p \in P$ at an iteration $i$ \\ 
+    $\phi(\delta)$ & Uniform random function that selects a value between $[-\delta, \delta]$\\
+    $C$ & Equivalent to \lstinline$ALGORITHM_CAPACITY$ \\
+    \hline 
+\end{tabular} 
+\end{table}
 
-Using this procedure, six different sequences of measurements were created, each
-    differing in the $\delta$ used to vary the speed. As such, for each initial
-    condition, there is a sequence where $\delta$ is set to $0, 5, 10, 15, 20,
-    25$. In other words, there are $6 (deltas) \times 4 (starting\; conditions)$
-    different sequences, each representing a measurement instance provided by
-    the monitor process. After reading a single measurement from a sequence, the
-    controller runs the implemented algorithms to find the group's configuration
-    in all scenarios.
+To generate a stream of measurements, given $N$ (the number of measurements
+desired) and $\delta$ (maximum relative speed variation between two sequential
+iterations), at first the initial speed $s_0(p), \; \forall p \in P$ has to be
+defined. Four different approaches were tested:
+\begin{enumerate}
+    \item Choosing a random value for the initial speed of each partition
+        between $[0, 100]\% \cdot C$;
+    \item Setting all partition's initial speed to $0\% \cdot C$;
+    \item Setting all partition's initial speed to $50\% \cdot C$;
+    \item Setting all partition's initial speed to $100\% \cdot C$.
+\end{enumerate}
 
-\begin{figure}[H] \centering
-    \includegraphics[width=0.8\textwidth]{images/controller/Relative Number of
-    Consumers.png} \caption{Average Relative Deviation from the configuration
-    that provides the minimum number of consumers, with a random initial speed
-    for each partition.} \label{fig:relative_nconsumers} \end{figure}
+Given that there was no significant difference on the outcome when the initial
+parition speed varied, for the remaining part of this section we will consider
+the case where the initial speed was randomly selected between $[0, 100]\% \cdot
+C$ for all partitions $p \in P$.
 
-To better illustrate the performance of the algorithms for each measurement
-    sequence, the metrics are statistically summarized using the average. The x
-    axes refers to the 6 different measurement sequences for a given starting
-    condition, and the value is the $\delta$ defined for that measurement. As
-    for the y axes in \ref{fig:relative_nconsumers}, it indicates the
-    algorithm's average relative deviation from the configuration that provides
-    the minimum number of consumers.
+Therefore, given $s_0(p)\ \forall p \in P$, the remaining measurements were
+obtained using: 
+\begin{equation}
+    s_i(p) = s_{i-1}(p) + \frac{\phi(\delta)}{100} \cdot C, \quad 
+        \forall \ p \in P \ \wedge \ 
+        i \in \{1, 2, ..., N-1\}
+\end{equation}
 
-In \ref{fig:relative_nconsumers}, each partition starts with a random speed
-    between $[0,100]\%$ of \lstinline[language=Python]{ALGORITHM_CAPACITY}. The
-    worst performing algorithm is the next fit followed by its decreasing
-    version, since every time a partition is to be assigned, the algorithm only
-    verifies if it fits in the last created bin, as opposed to considering all
-    the already existing bins. The remaining any fit decreasing algorithms, are
-    the ones that perform the best, with the best fit decreasing consistently
-    presenting the best results. 
+Using the aformentioned procedure, 6 different streams of data were generated by
+setting $N = 500$ and setting $\delta$ to a value belonging to the set
+$\{0, 5, 10, 15, 20, 25\}$ for each stream of data ($\delta$ does not change
+within a stream).
 
-\begin{figure}[H] \centering
-    \includegraphics[width=0.7\textwidth]{images/controller/Relative Number of
-    Consumer Modified.png} \caption{Average Relative Deviation from the
-    configuration that provides the minimum number of consumers, with a random
-    initial speed for each partition. (Filtered to present the modified
-    algorithms and BFD)} \label{fig:relative_nconsumers_modified} \end{figure}
+\subsubsection{Testing Metrics}
+
+The metrics used to compare the performance between the algorithms are the
+Cardinal Bin Score ($CBS_\delta(a)$) and the Average RScore ($E_\delta(R)$) over all iterations
+of each stream.
+
+\begin{table}[H] 
+\centering 
+\caption{Data to compute the cardinal bin score for a stream of measurements.} 
+\label{table:bin_score} 
+    \begin{tabular}{ |c|p{0.8\textwidth}| } 
+    \hline 
+    \textbf{Symbol} & \textbf{Description} \\ 
+    \hline 
+    $A$ & Set of algorithms implemented. \\ 
+    $z_i^\delta(a)$ & number of bins used in iteration $i \in \{0, 1, ..., N-1\}$ for a
+        stream defined by $\delta$ by an algorithm $a \in A$. \\ 
+    \hline 
+\end{tabular} 
+\end{table}
+
+The cardinal bin score is calculated using the following expression:
+\begin{equation}
+    CBS_\delta(a) = \frac{1}{N}
+        \sum_{i=0}^{N-1} 
+            \frac{  z_i^\delta(a) - min_{b \in A} \{z_i^\delta(b)\} }
+                 {min_{b \in A} \{z_i^\delta(b)\} }, \ 
+        \forall \ a \in A \ \wedge \ \delta \in \{0, 5, 10, 15, 20, 25\}. 
+\end{equation}
+
+The expected value of the Rscore, is used to compare the rebalance cost for a
+single stream of data, and is computed as follows:
+\begin{equation}
+    E_\delta(R) = \frac{1}{N} 
+        \sum_{i=0}^{N-1} R_i, \quad
+        \forall \ \delta \in \{0, 5, 10, 15, 20, 25\}
+\end{equation}
+
+\subsubsection{Test Results}
+\label{subsub:test_results}
+
+\begin{figure}[htb!] 
+\centering
+\includegraphics[width=0.6\textwidth]{images/controller/relative.png} 
+\caption{
+    Cardinal Bin Score (CBS) for all implemented algorithms.
+} 
+\label{fig:relative_nconsumers} 
+\end{figure}
+
+In figure \ref{fig:relative_nconsumers}, the worst performing algorithm is the
+next fit followed by its decreasing version, which is due to every time a
+partition has to be assigned, the algorithm only verifies if it fits in the last
+created bin, as opposed to considering all existing bins. The remaining any fit
+decreasing algorithms, are the ones that perform the best, with the best fit
+decreasing consistently presenting the best results. 
+
+\begin{figure}[htb!] 
+\centering
+\includegraphics[width=0.6\textwidth]{images/controller/filtered_relative.png} 
+\caption{
+    Cardinal Bin Score (CBS) filtered to present the modified algorithms and the
+    BFD algorithms.
+} 
+\label{fig:relative_nconsumers_modified} 
+\end{figure}
 
 As for the modified versions of these algorithms, due to its sorting strategy,
 MBFP shows the best results. It is also worth noting that for smaller
 variabilities, the modified algorithms behave similarly to the online versions
-of their any fit strategy, but, the higher the delta, the bigger the
-variability, which also leads to more rebalancing, having the modified
-algorithms behave more like the decreasing versions of their fit strategy.
+of their any fit strategy with respect to the CBS, since the partitions aren't
+necessarily assigned from biggest to smallest. On the other hand, the higher the
+delta, the bigger the variability, which also leads to more rebalancing, having
+the modified algorithms behave more like the decreasing versions of their fit
+strategy, as more partitions are left with the unassigned set of partitions to
+then be assigned in the final phase of the modified algorithms.
 
-\begin{figure}[H] 
+\begin{figure}[htb!] 
     \centering
-    \includegraphics[width=0.7\textwidth]{images/controller/Rscore.png}
+    \includegraphics[width=0.6\textwidth]{images/controller/Rscore.png}
     \caption{
         Impact on Rscore for different Deltas (random initial partition speed).
     } 
     \label{fig:rscore} 
 \end{figure}
 
-For the same starting conditions, \ref{fig:rscore} presents the average Rscore
-of each algorithm for all six measurement sequences.
-
-As can be seen in \ref{fig:rscore}, the modified algorithms present the best
-Rscore for each measurement along with next fit decreasing. The reason why the
-NFD presents such a result, is due to the increased amount of consumers it
-creates to assign new partitions, which at the moment of creation, will always
-be the same consumer as the one assigned to the partition being analyzed, as
-long as it has not yet been created (\ref{fig:approximation_bin_creation}).
+As can be seen in figure \ref{fig:rscore}, the modified algorithms present the
+best average Rscore for each stream of measurements along with the NFD. The
+reason why the NFD presents such a result, is due to the increased amount of
+consumers it creates to assign new partitions, which due to the procedure
+exemplified in figure \ref{fig:approximation_bin_creation}, will assign the
+partition to the same consumer it is currently assigned to, as long as it has
+not yet been created in the future assignment.
 
 For a similar reason, the modified algorithms that perform the best with regards
 to the Rscore, are also the ones that perform worst (compared to the remaining
-modified algorithms) when evaluating the relative number of consumers.
-
-The remaining tests performed are presented in the appendix, and it can be
-concluded, that the initial conditions do not significantly affect the relative
-performance of the algorithms (\ref{}).
+modified algorithms) when evaluating the CBS.
 
 To select the algorithm to use within the controller, there is a trade-off
 between the aforementioned testing metrics. On account of the added re-balance
 concern within the modified algorithms, these present an improvement with
-regards to the Rscore compared to the approximation algorithms presented in the
-literature.
+regards to the rebalance cost when compared to the existing approximation
+algorithms.
 
-\begin{figure}[H] \centering
-\includegraphics[width=\textwidth]{images/controller/Facet Wrap Pareto
-Front.png} \caption{Pareto Front for each delta value used in the measurement
-sequences.} \label{fig:pareto_front} \end{figure}
+\begin{figure}[H] 
+    \centering
+    \subfigure[]{
+        \includegraphics[width=0.3\textwidth]{images/controller/pareto_front/5.png}
+    }
+    \subfigure[]{
+        \includegraphics[width=0.3\textwidth]{images/controller/pareto_front/10.png}
+    }
+    \subfigure[]{
+        \includegraphics[width=0.3\textwidth]{images/controller/pareto_front/15.png}
+    }
+    \subfigure[]{
+        \includegraphics[width=0.3\textwidth]{images/controller/pareto_front/20.png}
+    }
+    \subfigure[]{
+        \includegraphics[width=0.3\textwidth]{images/controller/pareto_front/25.png}
+    }
+    \caption{
+        (a) Pareto front for $\delta = 5$ (b) Pareto front for $\delta = 10$ (c)
+        Pareto front for $\delta = 15$ (d) Pareto front for $\delta = 20$ (e)
+        Pareto front for $\delta = 25$
+    } 
+    \label{fig:pareto_front} 
+\end{figure}
 
 The pareto front is a way of evaluating the set of solutions that are most
 efficient, provided there are trade-offs within a multi-optimization problem.
 
 Excluding MWFP, the modified algorithms are consistently a part of the pareto
-front \ref{fig:pareto_front}, which implies these are a competitive option as to
-which algorithm to pick for the reassign algorithm to be executed in the
-controller. The algorithm that shows the best Rscore for the different
-variabilities is the MWF, whereas the modified algorithm that performs the best
-relative to the number of consumers used in each configuration is the MBFP.
+front as shown in figure \ref{fig:pareto_front}, which implies these are a
+competitive option as to which algorithm to pick for the reassign algorithm to
+be executed in the controller. The algorithm that shows the best Rscore for the
+different variabilities is the MWF, whereas the modified algorithm that performs
+the best relative to the Cardinal Bin Score is the MBFP.
 
 \subsection{State Group Management}
 
@@ -1078,9 +1183,9 @@ from it, and only after the consumer acknowledges having acted to the request,
 can it inform the new consumer of its new assignment.
 
 This state not only handles this message exchange but it also creates and
-deletes consumer resources from the Kubernetes cluster. 
+deletes consumer and persistent volume resources from the Kubernetes cluster. 
 
-\subsubsection{Difference between current and future state}
+\subsubsection{Difference between two Group States}
 
 The current consumer group's state is represented by a list of consumers, each
 having their own assignment. The new computed group's state is defined as the
@@ -1089,57 +1194,60 @@ representing the desired state the controller will communicate to each consumer.
 
 Similar to computing the difference between two sets, when computing the
 difference between 2 consumer lists the procedure involves iterating over each
-consumer (in both states), and calculate the difference between the two consumer
+consumer (in both states), and calculating the difference between the two consumer
 assignments (set of assigned partitions). There are three scenarios that result
 in different actions the controller has to perform, for a given position $i$ of
-each consumer list: \begin{itemize} \item next state has a consumer at $i$ but
-            the current state does not - This means that the consumer has to be
-            created by the controller, and the partitions assigned to the
-            consumer in position $i$ of the next state, have to be associated
-            with a StartConsumingCommand for this same consumer.  \item next
-                state does not have a consumer at $i$ but the current assignment
-                does - The partitions associated with the consumer at position
-                $i$ of the current state have to be associated with a
-                StopConsumingCommand directed to this consumer, and the consumer
-                has to be added to the list of consumers to remove.  \item both
-                    next state and current state have a consumer at position $i$
-                    - This means that no creation or deletion operation has to
-                    be performed for this bin, and the operations to perform in
-                    this case are only communicating to the already existing
-                    consumer the difference in its assignment. 
+each consumer list: 
+\begin{itemize} 
+    \item next state has a consumer at $i$ but the current state does not - This
+        means that the consumer has to be created by the controller, and the
+        partitions assigned to the consumer in position $i$ of the next state,
+        have to be associated with a StartConsumingCommand for this same
+        consumer.  
+    \item next state does not have a consumer at $i$ but the current state
+        does - The partitions associated with the consumer at position $i$ of
+        the current state have to be associated with a StopConsumingCommand
+        directed to this consumer, and the consumer has to be added to the list
+        of consumers to remove.  
+    \item both next state and current state have a consumer at position $i$ -
+        This means that no creation or deletion operation has to be performed
+        for this bin, and the operations to perform in this case are only
+        communicating to the already existing consumer the difference in its
+        assignment. 
     
-    The same consumer has two different sets of partitions assigned to it
+        The same consumer has two different sets of partitions assigned to it
         represented in the two different group states.
         \lstinline[language=Python]{next_assignment} will denote the set of
         partitions attributed to the consumer's state in the next group's
         context, and \lstinline[language=Python]{current_assignment} is defined
         as the consumer's set of partitions in its current state.
     
-    \begin{lstlisting}[language=Python] partitions_stop = current_assignment -
-    next_assignment partitions_start = next_assignment - current_assignment
-    \end{lstlisting} the resulting set of partitions within
-        \lstinline[language=Python]{partitions_stop} have to included in a
-        StopConsumingCommand, whereas the partitions in
-        \lstinline[language=Python]{partitions_start} in a
-        StartConsumingCommand, both message types directed to consumer $i$.
+\begin{lstlisting}[language=Python] 
+partitions_stop = current_assignment - next_assignment 
+partitions_start = next_assignment - current_assignment
+\end{lstlisting} 
+        the resulting set of partitions within \lstinline{partitions_stop} have
+        to be included in a StopConsumingCommand, whereas the partitions in
+        \lstinline{partitions_start} in a StartConsumingCommand, both message
+        types directed to consumer $i$.
 \end{itemize}
 
 \subsubsection{Managing the Consumer Group in the Kubernetes Cluster}
 
 Each active consumer in the current group's state, represents a deployment with
-a single replica (pod). The reason why this is the case is that each consumer
-requires a volume to persist its data, which implies having a different volume
-for each pod. This is also possible using stateful sets, but the constraint of a
-stateful set is that when removing a replica of the set, it only allows to
-remove the last added replica, and in this context, a more granular approach is
-required when removing an active consumer, as it does not necessarily have to be
-the highest indexed consumer.
+a single replica (pod), since each consumer requires a volume to persist its
+data, which implies having a different volume for each pod. This is also
+possible using stateful sets, but the constraint of a stateful set is that when
+removing a replica of the set, it only allows to remove the last added replica,
+and in this context, a more granular approach is required when removing an
+active consumer, as it does not necessarily have to be the highest indexed
+consumer.
 
 Each consumer is given an individual id through its deployment's
-\lstinline[language=Python]{metadata.name} property, a value that can be
-obtained within the pod using the downwardAPI, that provides a pod with its
-context. This individual id assigned to the deployment's name, is the one used
-to inform the pod of its metadata partition to consume from.
+\lstinline{metadata.name} property, a value that can be obtained within the pod
+using the downwardAPI, that provides a pod with its context. This individual id
+assigned to the deployment's name, is the one used to inform the pod of its
+metadata partition to consume from in the \lstinline{consumer.metadata} topic.
 
 To allow the controller to create, list and delete the resources within the
 cluster, a Kubernetes service account is used to authenticate the controller,
@@ -1163,24 +1271,27 @@ the template deployment, and change the deployment's id to the incremental id
 attributed by the controller.
 
 As an example, if the controller has to create a consumer whose id is $5$, it
-would go through the following steps: \begin{enumerate} \item If the PVC with
-            name \lstinline[language=Python]{de-consumer-5-volume} does not yet
-            exist, change the PVC metadata.name parameter to
-            \lstinline[language=Python]{de-consumer-5-volume}, and send the
-            create request with the body containing the modified yaml file;
-        \item Change the template deployment's metadata.name parameter to
-            \lstinline[language=Python]{de-consumer-5}, and add a reference to
-            the PVC created in the previous step.  \end{enumerate}
+would go through the following steps: 
+\begin{enumerate} 
+    \item If the PVC with name \lstinline{de-consumer-5-volume} does not yet
+        exist, change the PVC metadata.name parameter to
+        \lstinline{de-consumer-5-volume} in the template yaml file
+        \ref{appendix:template-pvc}, and send the create request with the body
+        containing the modified yaml file;
+    \item Change the template deployment's metadata.name parameter in the
+        template yaml file \ref{appendix:template-consumer} to
+        \lstinline{de-consumer-5}, and add a reference to the PVC created in the
+        previous step.  
+\end{enumerate}
 
 \subsubsection{Communication between controller and Consumer Group}
 \label{sub:controller_communication_cosumer}
 
 Using the computed difference between the next and current group's state, each
-consumer has a set of start and stop messages that have to be sent by the
-controller, for the group to reach the intended state.
-
-Each partition can have associated to it, at most two actions, which correspond
-to a start and/or a stop command. 
+consumer has a set of start and stop messages that have to be sent out by the
+controller, for the group to reach the intended state. Each partition can have
+associated to it at most two actions, which correspond to a start and/or a stop
+command. 
 
 Firstly, the controller prepares a batch of StartConsumingCommand messages, each
 directed to a single consumer. For each partition in the set of unassigned
@@ -1207,10 +1318,10 @@ start action, the partition is added to the StartConsumingCommand directed to
 the new consumer. 
 
 When the controller sends a message to a consumer, it sends it to the same
-partition as the consumer's id in the consumer.metadata topic. As for
+partition as the consumer's id in the \lstinline{consumer.metadata} topic. As for
 the consumer, to communicate the event of having reacted to one of the
 controller's commands, the record has to be sent to the partition with id $0$ of
-the same topic, as depicted in the diagram (\ref{fig:system_architecture}).
+the same topic, as depicted in figure \ref{fig:system_architecture}.
 
 This process terminates when there are no more actions to perform over any
 partition, since the controller removes a start or stop action from a partition
@@ -1219,16 +1330,11 @@ the corresponding command.
 
 \subsection{Synchronize}
 
-The controller enters this state if the state it holds of the consumer group,
-which is the state it has for each active consumer, is not synchronized with the
-state in each consumer. 
-
-This state was then created to mitigate this problem, following a procedure
-which has the controller querying the kubernetes cluster to verify which are its
-active consumers. Given this, the controller then queries each consumer through
-their respective partitions for their current state, and only after all active
-consumers have responded does the controller proceed to its normal behaviour
-triggering the transition to the Sentinel state.
-
-While testing the controller, this state would most commonly be triggered after
-the controller would unexpectedly fail and then restart.
+This state exists to mitigate desynchronization between the consumer group's
+state as perceived by the controller and the real state the group finds itself
+in. The procedure involves having the controller query the kubernetes cluster to
+verify which are its active consumers, and with this information, it then
+queries each consumer through their respective partitions for their current
+state.  Only after all active consumers have responded with their state does the
+controller proceed to its normal behaviour triggering the transition to the
+Sentinel state. 

@@ -17,7 +17,7 @@ Formally, the problem can be summarized as the following optimization problem:
         &&\sum_{i \in B} y_i 
             && \\
     &\text{subject to} \quad
-        && \sum_{j \in L} w_j \cdot x_{ij} \leq C \cdot y_i. \quad      
+        && \sum_{j \in L} w_j \cdot x_{ij} \leq C \cdot y_i \quad      
             && \forall \; i \in B \label{opt:c1} \\
     &   && \sum_{i \in B} x_{ij} = 1, \quad                 
             && \forall \; j \in L \label{opt:c2} \\
@@ -39,7 +39,7 @@ version, where all the weights are down-scaled by the total capacity of a bin,
 and the capacity of each bin is $1$. This implies modifying \ref{opt:c1} into:
 
 \begin{equation}
-    \sum_{j \in L} \hat w_j \cdot x_{ij} \leq y_i. \quad \forall \; i \in B,
+    \sum_{j \in L} \hat w_j \cdot x_{ij} \leq y_i \quad \forall \; i \in B,
 \end{equation}
 where \(\hat w_j\) represents the normalized weight of an item ($w_j/C$).
 Throughout the following anaylsis, both "weight" and "size" will be used
