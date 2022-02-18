@@ -1,36 +1,48 @@
 \chapter{Integration Tests} 
 \label{chap:integration_tests}
 
-The following chapter will focus on the main sequence of events that the
-autoscaler goes through to scale its consumer group. 
+This chapter aims to provide with an overview of the different events the system
+goes through to automatically scale a group of consumers, process that is
+illustrated by figure \ref{fig:step_event_sequence}. 
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{images/integration/integration_gant.png}
+\includegraphics[width=\textwidth]{images/integration/Integration_diagram.png}
 \caption{System sequence of events.}
 \label{fig:step_event_sequence}
 \end{figure}
 
-The time it takes the controller to react to a certain measurement depends on
-all the events presented in figure \ref{fig:step_event_sequence}. The following
-sections will delve into each of these events. 
+Initially, a measurement has to be provided by the monitor process to then be
+consulted by the controller ($\Delta_{t1}$). The controller then updates the
+group's current state based on the new measurement, and proceeds to computing a
+new group configuration using one of the heuristic algorithms presented in
+section \ref{subsub:modified_any_fit}.  Having calculated the new configuration, the controller
+calculates the difference between the new and current configuration, to
+determine the consumers it has to create, the ones it has to delete, and the
+messages that have to be communicated to each consumer to reach the intended
+state (section \ref{sub:state_group_management}). This then leads to the controller communicating with the
+Kubernetes control plane, to create the new consumer resources ($\Delta_{t2}$). 
 
-The data points presented for each $\Delta_{tn}, \ n \in \{1, 2, 3, 4\}$, were
-obtained by testing the system with various simulations of step inputs, and
-randomly generated sequences of measurements similar to the sequences used in
-section \ref{c3subsub:testing}.
+The controller then waits for the newly created deployments to be ready
+($\Delta_{t3}$), followed by communicating with the consumer group to inform the
+consumers of their change in state, which only terminates as
+soon as all messages have been sent out to the respective consumers, and when every message
+has been acknowledged back to the controller ($\Delta_{t4}$).
 
-\section{Monitor Measurement Convergence Time}
+\section{Monitor Measurement Convergence Time ($\Delta_{t1}$)}
 \label{c3sec:MonitorMeasurement}
 
 To evaluate the monitor's response time, the data points were obtained by
-feeding the system a step input, which is obtained by starting a producer that
-sends data to one of the partitions the consumer group is consuming data from.
+feeding the system a step input, similar to what was done in section
+\ref{component:Monitor}, which is obtained by starting a producer that sends
+data to one of the partitions the consumer group is consuming data from.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.6\textwidth]{images/integration/delta1.png}
-\caption{Distribution of the time it takes the monitor process to reach the step value for 33 different step inputs.}
+\caption{
+    Distribution of $\Delta_{t1}$ for 31 different step inputs.
+}
 \label{fig:controller_result_monitor}
 \end{figure}
 
@@ -39,21 +51,20 @@ the real production rate, which, as can be verified in figure
 \ref{fig:controller_result_monitor}, takes no more than $30s$, similar to what
 had been obtained in figure \ref{fig:monitor_step}.
 
-\section{Time to Trigger Scale-up}
+\section{Time to Trigger Scale-up ($\Delta_{t2}$)}
 
 Measured as the time it takes the controller to compute the consumer group's new
-assignment, and to send an asynchronous request to the GKE cluster for every new
-consumer instance to be created. To obtain the distribution for this metric, the
-system was tested with the aforementioned step inputs and the randomly generated
-measurement sequences.
+assignment, computing the difference between the new and current states, and to
+send an asynchronous request to the GKE cluster for every new consumer instance
+to be created. To obtain the distribution for this metric, the system was tested
+with the aforementioned step inputs and the randomly generated measurement
+sequences used in section \ref{c3subsub:testing}.
 
 \begin{figure}[htb!]
 \centering
 \includegraphics[width=0.6\textwidth]{images/integration/delta2.png}
 \caption{
-    Distribution of the time it takes the controller to compute a new
-    consumer group state and send the asynchronous request to create the new
-    consumers to the kubernetes cluster.
+    Distribution of $\Delta_{t2}$ for 1345 observations.
 }
 \label{fig:controller_result_trigger}
 \end{figure}
@@ -64,11 +75,11 @@ controller is executing to figure a new consumer group assignment, and the
 number of new consumer instances it has to create in the GKE cluster.
 
 For the tested input data, where there were at most 32 partitions to rebalance
-and no more than 20 consumers to be created in a single instance, the event
+and no more than 20 consumers to be created in a single interation, the event
 consistently takes less than 1 second to be executed as shown in figure
 \ref{fig:controller_result_trigger}.
 
-\section{Newly Created Deployments Ready}
+\section{Newly Created Deployments Ready ($\Delta_{t3}$)}
 
 After making the asynchronous request to the GKE cluster, the control plane
 schedules the pods to a node, and within the node starts the containers that are
@@ -77,7 +88,9 @@ to be executed.
 \begin{figure}[htb!]
 \centering
 \includegraphics[width=0.6\textwidth]{images/integration/delta3.png}
-\caption{Relative frequency histogram of the time it takes the kubernetes cluster to have the newly created consumers "ready".}
+\caption{
+    Histogram of $\Delta_{t3}$ for 273 observations.
+}
 \label{fig:controller_result_kubernetes}
 \end{figure}
 
@@ -96,8 +109,8 @@ start the containers.
 The second group of data points, any time span greater than $50s$ (represents
 12\% of the data points), occurs when the Kubernetes cluster does not have any
 available resources. Here the actions the cluster undergoes are adding a new
-node, and only then scheduling the consumer instance into the new available
-node. Due to the autoscaling feature of the GKE cluster, this is done
+node to the cluster, and only then scheduling the consumer instance into the new
+available node. Due to the autoscaling feature of the GKE cluster, this is done
 automatically but it is also more inconsistent, having data points taking up to
 $500s$, although very sporadically.
 
@@ -106,7 +119,7 @@ to schedule and start the pods, one variable that can be controlled is the size
 of the image which has to be downloaded by the nodes that were assigned the
 newly created consumer instances.
 
-\section{Communicating Change in State}
+\section{Communicating Change in State ($\Delta_{t4}$)}
 
 Each partition that the controller is monitoring can either be associated with a
 start, stop, rebalance or a do nothing action. A start action refers to the case
@@ -114,16 +127,15 @@ where there is no consumer currently consuming data from the partition, and the
 controller has assigned that partition to a consumer in its newly computed
 consumer group state. The stop action occurs when the controller no longer wants
 a consumer assigned to this partition therefore having no consumer fetching data
-from this partition in the group's future state. 
+from this partition in the group's future state. Rebalancing happens when the
+controller is changing the partition from being assigned from one consumer to
+another. Lastly, as the name suggests, do nothing is when there are no actions to
+be communicated for a partition. 
 
-Rebalancing happens when the controller is changing the partition from being
-assigned from one consumer to another. Lastly, as the name suggest, do nothing
-is when there are no actions to be communicated for a partition by the
-controller to a consumer of the consumer group. Since there is no concurrent
-read from the partition when the controller is analyzing a start or a stop
-action, the controller can send this message as soon as it enters this event,
-having to wait at most for 1 consumer cycle to receive the acknowledgement by
-the consumer. 
+Since there is no concurrent read from the partition when the controller is
+analyzing a start or a stop action, the controller can send this message as soon
+as it enters this event, having to wait at most for 1 consumer cycle to receive
+the acknowledgement by the consumer. 
 
 When rebalancing, the controller has to first send out the stop command, wait
 for a response, send out the start command, and wait for the response. Without
@@ -134,8 +146,7 @@ might have to wait for 2 consumer cycles to be able to rebalance a partition.
 \centering
 \includegraphics[width=0.6\textwidth]{images/integration/delta4.png}
 \caption{
-    Distribution of the time it takes the controller to communicate the change
-    in state to its consumer group.
+    Distribution of $\Delta_{t4}$ for 1331 observations.
 }
 \label{fig:controller_result_change_state}
 \end{figure}
@@ -154,9 +165,9 @@ changing the group's state could take at least 5 seconds, as can be seen in figu
 \ref{fig:controller_result_change_state}
 
 It is also worth noting that the more consumers there are in the group, the
-higher the probability that the consumer has to wait 1 whole cycle after sending
-out the stop command, and another whole cycle after a start command, as the
-communication is performed with more consumers.
+higher the probability that the controller has to wait 1 whole cycle after
+sending out the stop command, and another whole cycle after a start command, as
+the communication is performed with more consumers.
 
 Although this analysis was performed for a single partition, without any loss of
 generality and due to the fact that the controller sends out the change state
@@ -164,6 +175,5 @@ commands in batch, the time it takes the controller to change a consumer group's
 state remains at 2 consumer cycles.
 
 To vary the duration of this event, the consumer's cycle has to be altered using
-the \lstinline[language=Python]{BATCH_BYTES} and
-\lstinline[language=Python]{WAIT_TIME_SECS} parameters, which in turn have an
-effect on the time the consumer spends in a whole insert cycle.
+the \lstinline{BATCH_BYTES} and \lstinline{WAIT_TIME_SECS} parameters, which in
+turn have an effect on the time the consumer spends in a whole insert cycle.
