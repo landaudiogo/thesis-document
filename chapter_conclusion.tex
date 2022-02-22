@@ -18,8 +18,8 @@ packing problem, and for this reason 4 new algorithms were presented to
 heuristically solve the BPP, while at the same time taking into consideration
 how the items (partitions) were rebalanced to different bins (consumers). Three
 of the presented algorithms (MWF, MBFP and MBF), proved themselves to be a
-competitive alternative, consistently belonging to the pareto front
-(section \ref{subsub:test_results}) when comparing the multi-variate optimization with
+competitive alternative, consistently belonging to the pareto front (section
+\ref{subsub:test_results}) when comparing the multi-objective optimization with
 regards to the number of consumers and the Rscore.
 
 To further consolidate the BPP Model, the consumer was tested in diverse
@@ -29,7 +29,7 @@ then modeled as its single bin size variant.
 
 The different parts in the system interacted with one another as expected to
 deliver an autoscaling consumer group capable of adapting depending on the
-current load of the system as shown in \ref{chap:integration_tests}.
+current load of the system as shown in section \ref{chap:integration_tests}.
 
 \section{Future Work}
 
@@ -48,11 +48,11 @@ partition was the number of bytes in each partition. For this reason, a process
 historically storing the amount of bytes in a partition at a certain timestamp.
 
 A clear disadvantage of using this component is the fact that if
-\lstinline{retention.ms != -1}, this means a record is deleted from its
-partition after \lstinline{retention.ms} which leads to a reduction in the
-amount of bytes in the partition. The monitor process then erroneously evaluates
-a negative partition write speed. To circumvent this behaviour, either one of
-the following metrics provided by Kafka would suffice: The current write speed
+\lstinline{retention.ms != -1}, a record is deleted from its partition after
+\lstinline{retention.ms} which leads to a reduction in the amount of bytes in
+the partition, consequently having the monitor process erroneously evaluating a
+negative partition write speed. To circumvent this behaviour, either one of the
+following metrics provided by Kafka would suffice: The current write speed
 (bytes/s) per partition; A historic amount of bytes that have been written to a
 partition. Since the monitor process presents the write speed as the average
 data rate over the last 30 seconds, using a different strategy to evaluate the

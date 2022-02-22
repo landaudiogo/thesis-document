@@ -1095,7 +1095,7 @@ decreasing consistently presenting the best results.
 \centering
 \includegraphics[width=0.6\textwidth]{images/controller/filtered_relative.png} 
 \caption{
-    Cardinal Bin Score (CBS) filtered to present the modified algorithms and the
+    Cardinal Bin Score (CBS) filtered to present the modified and the
     BFD algorithms.
 } 
 \label{fig:relative_nconsumers_modified} 
@@ -1133,7 +1133,7 @@ to the Rscore, are also the ones that perform worst (compared to the remaining
 modified algorithms) when evaluating the CBS.
 
 To select the algorithm to use within the controller, there is a trade-off
-between the aforementioned testing metrics. On account of the added re-balance
+between the aforementioned testing metrics. On account of the added rebalance
 concern within the modified algorithms, these present an improvement with
 regards to the rebalance cost when compared to the existing approximation
 algorithms.
@@ -1189,9 +1189,10 @@ deletes consumer and persistent volume resources from the Kubernetes cluster.
 \subsubsection{Difference between two Group States}
 
 The current consumer group's state is represented by a list of consumers, each
-having their own assignment. The new computed group's state is defined as the
-next state, and is also a list of consumer's each having an assignment, but
-representing the desired state the controller will communicate to each consumer.
+having their own assignment (set of partitions). The new computed group's state
+is defined as the next state, and is also a list of consumer's each having an
+assignment, but representing the state the controller wants its consumer group
+to achieve.
 
 Similar to computing the difference between two sets, when computing the
 difference between 2 consumer lists the procedure involves iterating over each
@@ -1200,17 +1201,17 @@ assignments (set of assigned partitions). There are three scenarios that result
 in different actions the controller has to perform, for a given position $i$ of
 each consumer list: 
 \begin{itemize} 
-    \item next state has a consumer at $i$ but the current state does not - This
+    \item Next state has a consumer at $i$ but the current state does not - This
         means that the consumer has to be created by the controller, and the
         partitions assigned to the consumer in position $i$ of the next state,
         have to be associated with a StartConsumingCommand for this same
         consumer.  
-    \item next state does not have a consumer at $i$ but the current state
+    \item Next state does not have a consumer at $i$ but the current state
         does - The partitions associated with the consumer at position $i$ of
         the current state have to be associated with a StopConsumingCommand
-        directed to this consumer, and the consumer has to be added to the list
-        of consumers to remove.  
-    \item both next state and current state have a consumer at position $i$ -
+        directed to this consumer, and the consumer has to be removed from the
+        consumer group.  
+    \item Both next state and current state have a consumer at position $i$ -
         This means that no creation or deletion operation has to be performed
         for this bin, and the operations to perform in this case are only
         communicating to the already existing consumer the difference in its
@@ -1227,10 +1228,10 @@ each consumer list:
 partitions_stop = current_assignment - next_assignment 
 partitions_start = next_assignment - current_assignment
 \end{lstlisting} 
-        the resulting set of partitions within \lstinline{partitions_stop} have
+        The resulting set of partitions within \lstinline{partitions_stop} have
         to be included in a StopConsumingCommand, whereas the partitions in
-        \lstinline{partitions_start} in a StartConsumingCommand, both message
-        types directed to consumer $i$.
+        \lstinline{partitions_start} in a StartConsumingCommand, directed to
+        consumer $i$.
 \end{itemize}
 
 \subsubsection{Managing the Consumer Group in the Kubernetes Cluster}
@@ -1335,7 +1336,7 @@ This state exists to mitigate desynchronization between the consumer group's
 state as perceived by the controller and the real state the group finds itself
 in. The procedure involves having the controller query the kubernetes cluster to
 verify which are its active consumers, and with this information, it then
-queries each consumer through their respective partitions for their current
-state.  Only after all active consumers have responded with their state does the
-controller proceed to its normal behaviour triggering the transition to the
-Sentinel state. 
+queries each consumer through their respective partitions in the
+\lstinline{consumer.metadata} topic for their current state.  Only after all
+active consumers have responded with their state does the controller proceed to
+its normal behaviour triggering the transition to the Sentinel state. 
