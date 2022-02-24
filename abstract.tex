@@ -1,6 +1,75 @@
-\chapter*{Resumo}
-%\addcontentsline{toc}{chapter}{Resumo}
-
 \chapter*{Abstract}
 %\addcontentsline{toc}{chapter}{Abstract}
 
+Message brokers provide with asynchronous communication between data producers
+and consumers in a distributed environment, being Kafka one of the several
+message broker alternatives. To scale data consumption rate, Kafka has Consumer
+Groups, which is an abstraction that allows to parallelize tasks between
+consumers in a group. This abstraction presents new concerns that depend on the
+broker's current load, which include: determining the number of consumers
+required; determining the partition assignment between the consumers in a group
+in order to guarantee that the consumption rate of each partition is not less
+than their respective production rate. Additionally considering the load varies
+with time, there is an increasing need to find autoscaling solutions to reduce
+operational cost, while guaranteeing that all data is being consumed within
+acceptable time after it has been produced.
+
+As such, this problem is modeled as a new variation of the Bin Packing Problem
+where the bins are consumers of a consumer group, and the weights are the
+partitions and their respective write speeds. Due to the varying load applied to
+Kafka brokers, the weights change in size over time. Another variation is the
+fact that item assignments are not persistent, and therefore can be rebalanced
+between consumers in different time instants. This adds another concern related
+to the fact that while a partition is being rebalanced, data is not being
+consumed from it (rebalance cost). We propose a new metric to account for this
+cost (Rscore), and present four new heuristic algorithms based on the Rscore,
+three of which prove to be a competitive alternative when compared to existing
+heuristic algorithms with respect to the multi-objective optimization problem of
+minimizing both the number of consumers and the rebalance cost.
+
+To deliver a fully automated solution to the autoscaling problem, using the
+aforementioned theoretical approach, we propose a system that is capable of
+responding to a wide range of load applied to the brokers. When compared to
+exisitng solutions, the proposed system is capable of reducing the operational
+cost, and guarantees that the consumption rate keeps up with the production
+rate, which cannot be done by current solutions. 
+
+\chapter*{Resumo}
+%\addcontentsline{toc}{chapter}{Resumo}
+
+\textit{Message Brokers} possibilitam a comunicação assíncrona entre produtores
+e consumidores de informação num ambiente distribuido, sendo o Kafka uma das
+várias ferramentas disponíveis para este tipo de comunicação. Com o intuito de
+escalar a velocidade de consumo, o Kafka disponibiliza grupos de consumidores,
+que é uma abstração que permite paralelizar tarefas entre os consumidores de um
+grupo. Com esta abstração surgem as seguintes preocupações relacionadas com a
+carga atual de um \textit{broker}: quantos consumidores são necessarios?; como é
+que as partições vão ser distribuidas entre os consumidores de modo a garantir
+que a velocidade de produção não excede a velocidade de consumo?. Considerando
+que a carga dos \textit{Message Brokers} varia com o tempo, há uma crescente
+necessidade de haver um sistema capaz de escalar um grupo de consumidores de
+modo a garantir que não haja atrasos significativos no consumo dos dados
+produzidos.
+
+Modelou-se o problem como uma nova variação do \textit{Bin Packing Problem} (BPP), em
+que os \textit{bins} são os consumidores, e os pesos são as partições e as suas
+respetivas velocidades de escrita. Devido à variação da carga nos
+\textit{brokers}, os valores dos pesos variam com o tempo. Outra variação deste
+problema é que uma atribuição de uma partição a um consumidor não é persistente,
+e pode ser redistribuida para outros consumidores. Isto apresenta uma nova
+preocupação quando se procura uma solução a este problema associada ao facto de
+que enquanto uma partição está a ser redistribuida, os seus dados não estão a
+ser consumidos (custo de redistribuição). Propõe-se uma nova métrica (Rscore),
+que procura quantificar o custo de redistribuição de uma nova configuração.
+Baseados na nova metrica, apresenta-se também quatro novas heurísticas que
+fornecem uma solução ao BPP tendo em conta o Rscore. Três destes quatro
+algoritmos consideram-se soluções viáveis a este problema multi-objetivo de
+minimizar tanto o numero de consumidores como o custo de redistribuição, quando
+comparados a soluções existentes utilizando a frente de pareto.
+
+Por forma disponibilizar uma solução autónoma capaz de escalar um grupo de
+consumidores, apresenta-se também um sistema que tem a capacidade de resposta a
+uma ampla variedade de carga dos \textit{brokers}. Quando comparado às soluções
+existentes, o sistema consegue não só reduzir o custo operacional, como também
+garantir que a velocidade de consumo acompanha a velocidade de produção, algo
+que não é uma garantia nas soluções existentes.
