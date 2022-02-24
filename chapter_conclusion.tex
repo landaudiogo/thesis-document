@@ -3,33 +3,30 @@
 
 \section{Summary and Discussion of Thesis Results}
 
-The work developed in this thesis challenges the existing methods used to scale
-a Kafka consumer group and how the load should be distributed between the
+The work developed in this thesis, aims to challenge the existing methods to
+scale a Kafka consumer group, and how the load should be distributed between the
 various consumers.
 
-Our goal was to deterministically solve the autoscaling problem related to a
-group of consumers, which in turn was modeled as a Bin Packing Problem where the
-items that have to be assigned a bin can change in size over time. Due to this
-particular feature, a new metric was introduced in section \ref{sub:rscore} to
-determine a rebalance score (Rscore) for a given iteration. 
+The goal was to deterministically solve the autoscaling problem related to a
+group of consumers, which we model as a Bin Packing Problem where the items'
+sizes and bin assignments can change over time. In light of these variations,
+items' assignments can be rebalanced (bin assignment can change), and therefore
+we propose the Rscore to account for the rebalance cost, Section
+\ref{sub:rscore}.
 
-The Rscore introduces a new concern when executing an algorithm to solve the bin
-packing problem, and for this reason four new algorithms were presented to
-heuristically solve the BPP, while taking into consideration how the items
-(partitions) were rebalanced to different bins (consumers). Three of the
-presented algorithms (MWF, MBFP and MBF), proved themselves to be a competitive
-alternative, consistently belonging to the pareto front (Section
-\ref{subsub:test_results}) when considering the multiple objectives of
-minimizing the number of consumers and the rebalance cost.
+Given the fact that, to the best of our knowledge, it is the first time the BPP
+is applied in these conditions, there was lack of heuristic algorithms that
+solve the Bin Packing assignment while considering the Rscore. As such, in
+Section \ref{subsub:modified_any_fit} we propose four new heuristic algorithms
+based on the Rscore which are proven to be competitive solutions in Section
+\ref{subsub:test_results}, when solving the multi-optimization problem.
 
-The consumer was tested in diverse conditions to determine whether a constant
-bin size model could be used for the scenario at hand. Provided the results in
-Section \ref{result:bin capacity}, the BPP was then modeled as its single bin
-size variant.
-
-The different parts in the system interacted with one another as expected to
-deliver an autoscaling consumer group capable of adapting depending on the
-current load of the system as shown in Chapter \ref{chap:integration_tests}.
+Furthermore, in Chapter \ref{chap:consumer_group_autoscaler}, a system was
+developed to automatically scale a group of consumers and manage the partitions'
+assignments based on the aformentioned theoretical approach. This system was
+integrated in the company's infrastructure, and as expected is capable of
+providing a solution that scales a group of consumers based on the system's
+current load.
 
 \section{Future Work}
 
