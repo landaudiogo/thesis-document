@@ -1,4 +1,5 @@
-\chapter{Infrastructure} \label{chap:infrastructure}
+\chapter{Infrastructure} 
+\label{chap:infrastructure}
 
 \section{Distributed Systems Architecture}
 
@@ -37,20 +38,20 @@ size of these microservices, it is only logical that each of the small services
 follows some kind of team structure allowing for parallel development, without
 any real coupling between the services. 
 
-It is also stated in \cite{MartinFowlerMicroservices} that Microservices are
-built around different ``business capabilities'' which are ``independently
-deployable by fully automated deployment machinery''. In other words, each
-microservice can be deployed on its own, hence scaling services and reliability
-is "included" with this kind of architecture. This makes updating code very low
-risk. As an example, in the scenario there is some flaw in a new deployment sent
-to production, it will only affect that microservice in particular, making it
+Microservices are built around different ``business capabilities'' which are
+``independently deployable by fully automated deployment machinery''
+\cite{MartinFowlerMicroservices}. In other words, each microservice can be
+deployed on its own, hence scaling services and reliability is "included" with
+this kind of architecture. This makes updating code very low risk. As an
+example, in the scenario there is some flaw in a new deployment sent to
+production, it will only affect that microservice in particular, making it
 easier not only to track where the fault lies, but also guaranteeing that the
 remaining services are not made fully unavailable.
 
-On the topic of scaling, with smaller decoupled services, only the service that
-requires scaling is in fact replicated, which leads to less computer resources
-utilization thanks to the reduced overhead of the service, resulting in a
-considerate cost reduction, and faster response to scaling needs.
+When scaling smaller decoupled services, only the service that requires scaling
+is in fact replicated. This leads to less computer resources utilization thanks
+to the reduced overhead of the service, resulting in a considerate cost
+reduction, and faster response to scaling needs.
 
 With the possibility of running decoupled services interacting through
 lightweight network calls, each microservice can be programmed in whichever
@@ -60,14 +61,14 @@ lot simpler, and can be done in a lot less time when compared to its counterpart
 
 It is also worth mentioning that the separation between each service allows
 several representations of the same data in different ways depending on the
-service that is storing it. The benefits of this approach is not only in a
-projection perspective where there isn't a need to over-engineer how the data
-will be stored for future purposes that still are not implemented, but it also
+service that is storing it. The benefits of this approach are not only in a
+projection perspective (there isn't a need to over-engineer how the data
+will be stored for future purposes that still are not implemented), but it also
 helps model the world in the way that fits each service best. 
 
 Having multiple representations for the same data, also leads to inconsistency
-in the data stored in the different services. Employing a data warehouse in this
-scenario overcomes this hurdle, by unifying the data models of the different
+in the data stored in different services. Employing a data warehouse in this
+scenario overcomes this hurdle by unifying the data models of the different
 services, and becoming the single source of truth for any representation of the
 data within the system. It is also notably hard to maintain data consistency
 between the distributed services, and on this note, the following section is
@@ -79,7 +80,8 @@ When interacting between two distinct distributed servers, rarely should two
 components communicate with one another directly or through synchronous
 communication. If this were not the case, the communication would become too
 convoluted with the increase of instances and services, becoming a source of
-coupling. 
+coupling, i.e., communication routes would have to be defined at the machine
+level. 
 
 As stated in \cite{sharvari2019study}, it is clear the market needs point to a
 messaging system that has the following features:
@@ -96,13 +98,13 @@ messaging system that has the following features:
 
 To enable decoupling between services, most messaging systems leverage the use
 of a broker, providing with the space and time decoupling, with the added
-benefit of it also being asynchronous, in the sense that after the broker
-acknowledges the reception of the message sent by the producer, the producer
-does not need to worry about its consumption allowing for it to go back to the
-tasks it has at hand. There are two main approaches at solving this problem,
-event and message driven paradigms.
+benefit of it also being asynchronous. After the broker acknowledges the
+reception of the message sent by a producer, the producer does not need to
+worry about its consumption allowing for it to go back to the tasks it has at
+hand. There are two main approaches at solving this problem, event- and
+message-driven paradigms.
 
-\subsection{Message Driven}
+\subsection{Message-Driven}
 
 This paradigm makes use of message queues where producers send the data for it
 to be consumed by a single consumer in the same order it was appended to the
@@ -116,7 +118,7 @@ This is done using round-robin dispatching \cite{RabbitMQscale} which simplifies
 parallelizing work between instances, always guaranteeing that each message in a
 queue will be read by a single consumer.
 
-\subsection{Event Driven (Publish/Subscribe)}
+\subsection{Event-Driven (Publish/Subscribe)}
 
 Messaging system which allow a producer to send a message to a certain category,
 which can be posteriorly retrieved by multiple consumers which are subscribed to
@@ -174,8 +176,7 @@ provided:
     \item \textbf{topic} - The name of the topic to create;
     \item \textbf{partitions} - The amount of partitions the topic is subdivided
         in;
-    \item \textbf{replication-factor} - The amount of replicas of each partition
-        to guarantee a reliable service.
+    \item \textbf{replication-factor} - The amount of replicas of each partition.
 \end{enumerate}
 The \lstinline{example-topic} presented in figure \ref{fig:kafka_cluster} would have been
 configured with \lstinline{topic=example-topic}, \lstinline{partitions=9} and
@@ -274,8 +275,8 @@ related to the consumer group management. For a group to know when to rebalance
 it is important for the system to monitor the state of each consumer in the
 group, and this is performed by a group coordinator. To elect a group
 coordinator, the consumer group's id is selected as the message key, which is
-then hashed into a partition of this internal topic. The broker which is
-partition leader of this partition becomes the group coordinator.
+then hashed into a partition of this internal topic. The broker that leads this
+partition becomes the group coordinator.
 
 For a consumer to remain a member of the group, it must periodically send
 heartbeats with a predefined interval to the coordinator. When the maximum
@@ -326,9 +327,9 @@ on local hardware. To handle peak traffic, scaling was performed by purchasing
 more hardware, which would then become unused when the traffic was no longer as
 high \cite[Chapter~1]{smith2017docker}.
 
-Virtual Machines (VMs) became the next advance in this industry, and it allowed
+Virtual Machines (VMs) became the next advancement in this industry, and it allowed
 to use the resources of pieces of hardware more efficiently as multiple VMs
-could run on a single machine as long as there was space. This is when cloud
+could run on a single machine as long as there was space. This was when cloud
 service providers like Amazon, Google and Microsoft also started renting out
 VMs. In moments of peak traffic, a company could scale services in minutes, and
 there was no need to waste hardware resources with unused instances, therefore
@@ -343,19 +344,19 @@ the overhead of an operating system, which allows applications to run
 consistently in different environments as long as the containers are created
 resorting to the same image.
 
-As stated in \cite{DockerContainer}, an image is a bundle of code/software which
-contains all the dependencies and libraries a given instance might need to run
-reliably in different computing environments. Container images become containers
-on runtime.
+An image is a bundle of code/software that contains all the dependencies and
+libraries a process might need to run reliably in different computing
+environments \cite{DockerContainer}. A container is a process that is created using an image to
+setup the execution environment to perform its tasks.
 
 \section{Kubernetes} \label{subsec:kubernetes}
 
-Kubernetes works with a cluster of distributed nodes, that interact with one
+Kubernetes works with a cluster of distributed nodes that interact with one
 another to work as a single unit. This service allows for an automated
 distribution and scheduling of containerized applications. The level of
 abstraction causes a deployment to have no ties to a specific machine.
 
-A kubernetes cluster is formed by 2 entities, the control plane, and nodes. The
+A Kubernetes cluster is formed by two entities, the control plane, and nodes. The
 first is responsible for coordinating all activities in a cluster, such as
 scheduling, scaling and rolling out new updates of an application. The second,
 contains a process named kubelet, which manages the communication of the node
@@ -368,7 +369,7 @@ To change the Kubernetes cluster's state, the communication is performed via the
 \textbf{Kubernetes API} which is at the core of the control plane. This HTTP
 API, allows differing entities to communicate with the cluster and manage
 kubernetes objects \cite{KubernetesAPI}. Within this thesis' context, to manage
-a consumer group, the controller described in section \ref{component:controller}
+a consumer group, the controller described in Section \ref{component:controller}
 leverages this API to manage deployment and volume resources.
 
 As soon as the Kubernetes cluster is running, it is possible to deploy the
@@ -392,10 +393,10 @@ in the deployment's configuration.
 When up- or down-scaling the deployment, \lstinline{spec.template} is used to
 determine the Pod template to manage. Within the deployment's spec field, which
 specifies its desired state, \lstinline{spec.selector.matchLabels} and
-\lstinline{spec.template.metadata.labels} are what allows a deployment to know
+\lstinline{spec.template.metadata.labels} allow a deployment to know
 which pods to manage. The pods are tagged with the label specified by
 \lstinline{spec.template.metadata.labels} and the deployment searches for the
-pods that are tagged with the labels specified in
+pods tagged with the labels specified in
 \lstinline{spec.selector.matchLabels}.
 \end{sloppypar}
 
@@ -410,12 +411,13 @@ to determine the amount of instances required to match the demand.
 As described in \cite{KubernetesAutoscaling}, the algorithm works in loop,
 constantly evaluating the performance of the pods by measuring the selected
 metric's average value for the last minute. The control is performed by default
-every 30s, although it can be modified by changing the value of
+every 30 seconds, although it can be modified by changing the value of
 \lstinline{horizontal-pod-autoscaler-sync-period}.
 \end{sloppypar}
 
-The following equation determines the appropriate amount of pods, so as to have
-the average value for the metric within a deployment below the defined target.
+The following equation determines the appropriate amount of pods (numPods), so
+as to have the average value for the metric (e.g., CPU or Memory) within a
+deployment below the defined target.
 \begin{equation}
     numPods = ceil\bigg(\frac
         {\sum_{p \in Deployment} metric_p}
@@ -423,34 +425,35 @@ the average value for the metric within a deployment below the defined target.
     \bigg)
 \end{equation}
 where $metric_p$ is the average value of the metric to control in the last
-minute of a pod $p$. 
+minute of a pod $p$, and $ceil$ refers to the ceiling function. 
 
 To reduce noise when modifying the workload resource, the autoscaler can only
 scale-up if there was no rescaling within the last 3 minutes. The same applies
 to scale-down except that the waiting time is 5 minutes.
 
-Within the context of the problem presented in section \ref{chap:intro}, if a
+Within the context of the problem presented in Section \ref{chap:intro}, if a
 pod represents a consumer and a deployment a consumer group, the metric on
 which to base the autoscaling cannot be the deployment's average CPU or memory
-utilization, as the process shown in figure \ref{fig:problem_context} utilizes
+utilization, as the process shown in Figure \ref{fig:problem_context} utilizes
 more network than processing resources. 
 
-Kubernetes Event Driven Autoscaling (KEDA), provides a Kafka Consumer Group
+Kubernetes Event-driven Autoscaling (KEDA), provides a Kafka Consumer Group
 scaler which allows to increase the amount of consumers based on the average lag
-of a consumer group \cite{KEDA}. Although this is definitely better than scaling based on
-the CPU usage, it still lacks granularity on evaluating the groups performance
-based on other metrics, providing as an example, consumption and production rate
-of a partition. The load is also distributed between the consumer instances
-using the strategy mentioned in section \ref{sec:kafka_consumer_group}, which
-assigns approximately the same amount of partitions to each consumer within a
-group. Since the speed of each partition to be assigned is not the same, this is
-does not equally split the load between the consumers.
+of a consumer group \cite{KEDA}. Although this is definitely better than scaling
+based on CPU usage, it still lacks granularity on evaluating the groups
+performance based on other metrics, e.g., consumption and production rate of a
+partition. The load is also distributed between the consumer instances using the
+strategy mentioned in Section \ref{sec:kafka_consumer_group}, which assigns
+approximately the same amount of partitions to each consumer within a group.
+Since the speed of each partition to be assigned is not the same, this is does
+not equally split the load between consumers.
 
 \subsection{Kubernetes Operating Modes}
 
-When running Kubernetes, there are several alternatives. The first is to have
-the cluster run on manually provisioned hardware, which provides with the most
-control over which type of node is added or removed from the cluster. 
+When running Kubernetes, there are several alternative operating modes. The
+first is to have the cluster run on manually provisioned hardware, which
+provides with the most control over which type of node is added or removed from
+the cluster. 
 
 As soon as a node is manually added to the cluster, the control plane can start
 assigning pods to run in the node. When there is no longer any more space in the
@@ -470,9 +473,9 @@ Kubernetes Engine (GKE) autopilot and Elastic Kubernetes Service (EKS) fargate
 respectively, which automatically manage the nodes within the cluster without
 having to manually interact with it. This means that if the cluster does not
 have enough resources to maintain the state of the objects that have been
-defined, a node is automatically added, and the instances that require node
+defined, a node is automatically added and the instances that require node
 resources can now be scheduled.
 
 This mode of operation allows the user to pay by pod instead of node
 \cite{GKEautopilot, EKSfargate}, and provides a truly dynamic and hands-off
-experience when dynamically scaling a certain deployment.
+experience to scaling a Kubernetes cluster.

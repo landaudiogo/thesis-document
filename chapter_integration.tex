@@ -1,11 +1,16 @@
 \chapter{Integration Tests} 
 \label{chap:integration_tests}
 
-This chapter aims to provide with an overview of the different events the system
-goes through to automatically scale a group of consumers, process that is
-illustrated by figure \ref{fig:step_event_sequence}. 
+This chapter aims to provide with an overview of the events the system goes
+through to automatically scale a group of consumers, so as to achieve the
+required parallelism to have the group consuming data from each partition at a
+speed which is bigger or equal to their respective write speed. This involves
+communication between all three components presented in Chapter
+\ref{chap:consumer_group_autoscaler}, each playing a role in allowing the
+problem to be modeled as a Bin Packing Problem. The sequence of events is
+illustrated in Figure \ref{fig:step_event_sequence}.
 
-\begin{figure}[H]
+\begin{figure}[htb!]
 \centering
 \includegraphics[width=\textwidth]{images/integration/Integration_diagram.png}
 \caption{System sequence of events.}
@@ -16,18 +21,21 @@ Initially, a measurement has to be provided by the monitor process to then be
 consulted by the controller ($\Delta_{t1}$). The controller then updates the
 group's current state based on the new measurement, and proceeds to computing a
 new group configuration using one of the heuristic algorithms presented in
-section \ref{subsub:modified_any_fit}.  Having calculated the new configuration, the controller
-calculates the difference between the new and current configuration, to
-determine the consumers it has to create, the ones it has to delete, and the
-messages that have to be communicated to each consumer to reach the intended
-state (section \ref{sub:state_group_management}). This then leads to the controller communicating with the
-Kubernetes control plane, to create the new consumer resources ($\Delta_{t2}$). 
+section \ref{subsub:modified_any_fit}.  Having calculated the new configuration,
+the controller calculates the difference between the new and current
+configuration, to determine the consumers it has to create, the ones it has to
+delete, and the messages that have to be communicated to each consumer to reach
+the intended state (section \ref{sub:state_group_management}). This then leads
+to the controller communicating with the Kubernetes control plane, to create the
+new consumer resources ($\Delta_{t2}$). 
 
 The controller then waits for the newly created deployments to be ready
 ($\Delta_{t3}$), followed by communicating with the consumer group to inform the
 consumers of their change in state, which only terminates as
 soon as all messages have been sent out to the respective consumers, and when every message
-has been acknowledged back to the controller ($\Delta_{t4}$).
+has been acknowledged back to the controller ($\Delta_{t4}$). This process is illustrated
+by figure \ref{fig:step_event_sequence}.
+
 
 \section{Monitor Measurement Convergence Time ($\Delta_{t1}$)}
 \label{c3sec:MonitorMeasurement}
@@ -134,7 +142,7 @@ be communicated for a partition.
 
 Since there is no concurrent read from the partition when the controller is
 analyzing a start or a stop action, the controller can send this message as soon
-as it enters this event, having to wait at most for 1 consumer cycle to receive
+as it enters this event, having to wait at most for one consumer cycle to receive
 the acknowledgement by the consumer. 
 
 When rebalancing, the controller has to first send out the stop command, wait
@@ -155,13 +163,13 @@ A consumer's insert cycle goes through the different phases mentioned in section
 \ref{component:consumer}, and only after performing it's tasks does it verify
 the metadata queue to check if it has received any change in state command. For
 this reason, between two metadata reads from the data-engineering-controller
-topic, it takes the consumer 1 whole insert cycle. Having defined in section
+topic, it takes the consumer one whole insert cycle. Having defined in section
 \ref{c3subsub:consumer_maximum_capacity} that the consumer gathers at most
 $5Mbytes$ per cycle, and provided the results from figure
 \ref{fig:consumer_capacity}, which indicate the consumer has a data rate of
 approximately $2Mbytes/s$, each consumer cycle can take approximately $2.5s$.
-Since the controller has to wait for 2 consumer cycles, this would imply that
-changing the group's state could take at least 5 seconds, as can be seen in figure
+Since the controller has to wait for two consumer cycles, this would imply that
+changing the group's state could take at least 5 seconds, as can be seen in Figure
 \ref{fig:controller_result_change_state}
 
 It is also worth noting that the more consumers there are in the group, the

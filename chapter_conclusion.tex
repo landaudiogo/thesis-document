@@ -7,29 +7,29 @@ The work developed in this thesis challenges the existing methods used to scale
 a Kafka consumer group and how the load should be distributed between the
 various consumers.
 
-The goal was to deterministically solve the autoscaling problem related to a
+Our goal was to deterministically solve the autoscaling problem related to a
 group of consumers, which in turn was modeled as a Bin Packing Problem where the
 items that have to be assigned a bin can change in size over time. Due to this
 particular feature, a new metric was introduced in section \ref{sub:rscore} to
 determine a rebalance score (Rscore) for a given iteration. 
 
-The Rscore introduced a new concern when executing an algorithm to solve the bin
-packing problem, and for this reason 4 new algorithms were presented to
-heuristically solve the BPP, while at the same time taking into consideration
-how the items (partitions) were rebalanced to different bins (consumers). Three
-of the presented algorithms (MWF, MBFP and MBF), proved themselves to be a
-competitive alternative, consistently belonging to the pareto front (section
-\ref{subsub:test_results}) when comparing the multi-objective optimization with
-regards to the number of consumers and the Rscore.
+The Rscore introduces a new concern when executing an algorithm to solve the bin
+packing problem, and for this reason four new algorithms were presented to
+heuristically solve the BPP, while taking into consideration how the items
+(partitions) were rebalanced to different bins (consumers). Three of the
+presented algorithms (MWF, MBFP and MBF), proved themselves to be a competitive
+alternative, consistently belonging to the pareto front (Section
+\ref{subsub:test_results}) when considering the multiple objectives of
+minimizing the number of consumers and the rebalance cost.
 
-To further consolidate the BPP Model, the consumer was tested in diverse
-conditions to determine whether a constant bin size model could be used for the
-scenario at hand. Provided the results in section \ref{result:bin capacity}, the BPP was
-then modeled as its single bin size variant.
+The consumer was tested in diverse conditions to determine whether a constant
+bin size model could be used for the scenario at hand. Provided the results in
+Section \ref{result:bin capacity}, the BPP was then modeled as its single bin
+size variant.
 
 The different parts in the system interacted with one another as expected to
 deliver an autoscaling consumer group capable of adapting depending on the
-current load of the system as shown in section \ref{chap:integration_tests}.
+current load of the system as shown in Chapter \ref{chap:integration_tests}.
 
 \section{Future Work}
 

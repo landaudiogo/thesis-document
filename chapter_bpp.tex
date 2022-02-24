@@ -1,4 +1,5 @@
-\chapter{Bin Packing Problem} \label{chap:literature review}
+\chapter{Bin Packing Problem} 
+\label{chap:literature review}
 
 The bin packing problem (BPP), as defined in the literature, is a combinatorial
 optimization problem that has been extensively studied since the thirties. As
@@ -27,8 +28,9 @@ Formally, the problem can be summarized as the following optimization problem:
             && \forall \; i \in B, j \in L
 \end{alignat}
 where set $B$ corresponds to the available bins, and $L$ as the list of items to
-be arranged into different bins. $x_{ij}$ indicates whether an item $j$ is
-packed in the bin $i$, whereas $y_i$ informs whether bin $i$ is used. 
+be arranged into different bins. Decision variable $x_{ij}$ and $y_i$, indicate
+whether an item $j$ is packed in the bin $i$, and  whether bin $i$ is used
+respectively. 
 
 As for the constraints, \ref{opt:c1} assures that the sum of the items in a bin,
 does not exceed it's capacity, and \ref{opt:c2} makes sure that every item is
@@ -48,15 +50,15 @@ interchangeably, and the normalized BPP model will be employed.
 \section{Linear Programming}
 
 When interested in achieving the optimal solution, the textbook implementation
-of the BPP model presented by equation \ref{BPP model} is not computationally
+of the BPP model presented by Equation \ref{BPP model} is not computationally
 efficient. A common approach is to study the Upper and Lower Bounds of the
-Algorithm, and to add valid additional constraints to restrict the search space.
+Algorithm, and to add valid constraints to restrict the search space.
 
-In \cite{delorme2016bin}, there is an extensive review on the state of the art
+In \cite{delorme2016bin}, there is an extensive review on the state-of-the-art
 algorithms that have been developed to solve the ILP problem, comparing several
 models and their efficiency when solving the same set of problems. 
 
-Wihtin the context of the problem presented in chapter 1, provided two time
+Within the context of the problem presented in chapter 1, provided two time
 instants $t_1$ (the last instant at which the item assignment was computed) and
 $t_2$ (the current time instant at which the assignment is to be re-computed),
 given that the items' sizes change between $t_1$ and $t_2$, it is possible that
@@ -71,27 +73,27 @@ the real-time requirements presented in chapter \ref{chap:intro}.
 \section{Approximation Algorithms and Heuristics}
 \label{section:AA}
 
-In \cite{coffman2013bin} a method is presented to classify the BPP problem,
-which will be used throughout this section. During an algorithm's execution,
-a bin can find itself either \textit{open} or \textit{closed}. In the former,
-the bin can still be used to add additional items, whereas in the latter, it is
-no longer available and has already been used.  
+A method is presented to classify the BPP problem \cite{coffman2013bin}, which
+will be used throughout this section. During an algorithm's execution, a bin can
+find itself either \textit{open} or \textit{closed}. In the former, the bin can
+still be used to add additional items, whereas in the latter, it is no longer
+available and has already been used.  
 
 In the literature, it is common to present a parameter $\alpha$ which
 indicates the size limit of the weights within the list $L$, which varies
-between $(0, 1]$. This thesis studies the problem where the item's size is
+between $]0, 1]$. This thesis studies the problem where the item's size is
 simply limited to the size of the bin, and therefore $\alpha = 1$.
 
-To compare the performance between algorithms, the Asymptotic Performance Ratio
-(APR), is what will be employed throughout this section. $A(L)$ denotes the
-amount of bins a certain algorithm makes use of for a configuration of items
-$L$. $OPT(L)$ is used to represent the amount of bins required to achieve the
-optimal solution. Defining $\Omega$ as the set of all possible lists, each with
-a different arrangement of their items, given
+$A(L)$ denotes the amount of bins a certain algorithm makes use of for a
+configuration of items $L$. $OPT(L)$ is used to represent the amount of bins
+required to achieve the optimal solution. Defining $\Omega$ as the set of all
+possible lists, each with a different arrangement of their items, given a
+performance ratio defined by 
 \begin{equation}
     R_A (k) = \sup_{L \in \Omega} \left \{ \frac{A(L)}{k} : k = OPT(L) \right \},
 \end{equation}
-the APR is defined as
+the Asymptotic Performance Ratio (APR) of an algorithm $A$ ($R_A^\infty$) is
+defined as
 \begin{equation}
     R_A^\infty = \limsup_{k \to \infty} R_A(k).
 \end{equation}
@@ -116,7 +118,7 @@ Whenever an item is analyzed it has to be assigned a bin. This also implies that
 the bin in which the current item will be inserted is a function of the weights
 of all the preceding items in the list.
 
-This section will analyze Any fit, Almost any fit, bounded-space and reservation
+This section analyzes Any fit, Almost any fit, bounded-space and reservation
 technique algorithms.  Throughout the following sections, when \textit{current
 item} is mentioned, it is referring to the next item to assign a bin to. After
 assignment, the item that follows it in the list, is then considered the
@@ -181,7 +183,7 @@ First Fit
     R_{BF}^\infty = R_{FF}^\infty.
 \end{equation}
 
-In \cite{johnson1974fast}, a another class of algorithms presented, which is
+In \cite{johnson1974fast}, another class of algorithms presented, which is
 also a subclass of $AF$, is \textit{Almost Any Fit} ($AAF$). This class has as
 constraints: \textit{If $BIN_j$ is the first empty bin, and $BIN_k$ is the bin
 that has the most slack, where $k < j$, then the current item is not inserted
@@ -419,13 +421,21 @@ same as an optimal solution for $TBPP(t)$.
 
 Although the temporal aspect of the Bin Packing Problem has already been
 reviewed, there is a gap when it comes to the possibility of rebalancing the
-items between the different bin instances, which is one of the aspects this
-thesis aims to cover. 
+items between the different bin instances. Existing solutions consider a bin
+packing model where the items' sizes do not change with time, and the assignment
+is persistent and ephemeral, i.e., the items require an uninterrupted assignment
+for a specified duration. Modeling the BPP with items' sizes and consumer
+assignments that vary over time, is a new variation that has not been studied,
+and will be one of the contributions of this work. 
 
-This provides the basis for the work that will be developed. The objective is to
-compute different instances of the BPP over time to guarantee that a consumer
-group does not fall behind on the messages sent to the partitions that the group
-is reading data from. 
+In view of the fact that the existing approximation algorithms were developed to
+solve a single iteration of the BPP, these have to be adapted to the problem at
+hand, which requires solving a new iteration of the BPP given an already
+existing assignment. Despite the fact that the adaptation presented in Section
+\ref{sub:reassign} improves these algorithms' performance with respect to the
+rebalance cost, there is still room for improvement. The Modified Algorithms
+presented in Section \ref{subsub:modified_any_fit} are developed to solve this
+variation of the BPP, while taking the rebalance cost into account.
 
 % \section{Distributed Consumer Performance}
 
