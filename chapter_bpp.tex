@@ -32,13 +32,14 @@ be arranged into different bins. Decision variable $x_{ij}$ and $y_i$, indicate
 whether an item $j$ is packed in the bin $i$, and  whether bin $i$ is used
 respectively. 
 
-As for the constraints, \ref{opt:c1} assures that the sum of the items in a bin,
+As for the Constraints, \ref{opt:c1} assures that the sum of the items in a bin,
 does not exceed it's capacity, and \ref{opt:c2} makes sure that every item is
 assigned a bin. 
 
 It is also common to represent the bin-packing problem in its normalized
 version, where all the weights are down-scaled by the total capacity of a bin,
-and the capacity of each bin is $1$. This implies modifying \ref{opt:c1} into:
+and the capacity of each bin is $1$. This implies modifying Constraint
+\ref{opt:c1} into:
 
 \begin{equation}
     \sum_{j \in L} \hat w_j \cdot x_{ij} \leq y_i \quad \forall \; i \in B,
@@ -62,13 +63,13 @@ Within the context of the problem presented in chapter 1, provided two time
 instants $t_1$ (the last instant at which the item assignment was computed) and
 $t_2$ (the current time instant at which the assignment is to be re-computed),
 given that the items' sizes change between $t_1$ and $t_2$, it is possible that
-the configuration computed in $t_1$ no longer complies with constraint
+the configuration computed in $t_1$ no longer complies with Constraint
 \ref{opt:c1}. Considering the NP-hard nature of the problem, and the fact that the
 ILP problem is only interested in minimizing the amount of bins disregarding an
 item's previous assignment, this thesis will give more emphasis to the
 Approximation Algorithms that provide more control over the item reassignment
 problem, and provide a solution within the strict time constraints imposed by
-the real-time requirements presented in chapter \ref{chap:intro}.
+the real-time requirements presented in Chapter \ref{chap:intro}.
 
 \section{Approximation Algorithms and Heuristics}
 \label{section:AA}
@@ -410,12 +411,12 @@ As presented in \cite{furini2018matheuristics}, provided a set of items $N =
 \{1,2,...,n\}$, a weight $w_i \; \forall i \in N$, and a start and end time
 $[s_i, t_i[$, the set of items which have to be executing at a time instant
 $s_j$ is $S_j = \{n \in N: s_n \leq s_j \; and \; t_n > s_j\}$. This allows the
-definition of the non-dominated set $T = \{n \in N: S_k \subseteq S_n\}$ which
-discretizes the time dimension into several time instants. Due to the stateful
-nature of the problem that allows a task to be in more than one $S_j$, which
-implies an item may have an assignment from a previous time instant, and since
-an item cannot be rebalanced, an optimal solution for the $BPP(t)$ is not the
-same as an optimal solution for $TBPP(t)$.
+definition of the non-dominated set $T = \{n \in N: S_n \not\subseteq S_k\, \
+\forall \ k \in N\}$ which discretizes the time dimension into several time
+instants. Due to the stateful nature of the problem that allows a task to be in
+more than one $S_j$, which implies an item may have an assignment from a
+previous time instant, and since an item cannot be rebalanced, an optimal
+solution for the $BPP(t)$ is not the same as an optimal solution for $TBPP(t)$.
 
 \section{Conclusion}
 

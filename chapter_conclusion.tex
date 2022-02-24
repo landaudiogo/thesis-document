@@ -3,9 +3,10 @@
 
 \section{Summary and Discussion of Thesis Results}
 
-The work developed in this thesis, aims to challenge the existing methods to
-scale a Kafka consumer group, and how the load should be distributed between the
-various consumers.
+The work developed in this thesis, aims to achieve a deterministic approach as
+for the number of consumers required working in parallel, so as to guarantee
+that the rate of production into a topic is not higher than the rate of
+consumption, while minimizing the operational cost.
 
 The goal was to deterministically solve the autoscaling problem related to a
 group of consumers, which we model as a Bin Packing Problem where the items'
@@ -18,8 +19,9 @@ Given the fact that, to the best of our knowledge, it is the first time the BPP
 is applied in these conditions, there was lack of heuristic algorithms that
 solve the Bin Packing assignment while considering the Rscore. As such, in
 Section \ref{subsub:modified_any_fit} we propose four new heuristic algorithms
-based on the Rscore which are proven to be competitive solutions in Section
-\ref{subsub:test_results}, when solving the multi-optimization problem.
+based on the Rscore, three of which are proven to be competitive solutions in
+Section \ref{subsub:test_results}, when solving the multi-objective optimization
+problem.
 
 Furthermore, in Chapter \ref{chap:consumer_group_autoscaler}, a system was
 developed to automatically scale a group of consumers and manage the partitions'
@@ -41,7 +43,7 @@ Operator \cite{KuberenetesOperator} as is common with systems of this kind
 To the best of my knowledge, for lack of a better metric being provided by the
 Kafka cluster, the value that was used to track the write speed of each
 partition was the number of bytes in each partition. For this reason, a process
-(section \ref{component:Monitor}) was used to evaluate the speed of each partition by
+(Section \ref{component:Monitor}) was used to evaluate the speed of each partition by
 historically storing the amount of bytes in a partition at a certain timestamp.
 
 A clear disadvantage of using this component is the fact that if
@@ -53,7 +55,7 @@ following metrics provided by Kafka would suffice: The current write speed
 (bytes/s) per partition; A historic amount of bytes that have been written to a
 partition. Since the monitor process presents the write speed as the average
 data rate over the last 30 seconds, using a different strategy to evaluate the
-speed could lead to more robust measures.
+speed could lead to more robust measures and improved convergence times.
 
 \subsection{Consumer}
 

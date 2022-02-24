@@ -13,7 +13,7 @@ between different application components, which inevitably provides a lot of
 friction to updating the codebase due to the high risk of it disabling the
 service entirely.
 
-Like with most applications, with every new feature the monolith grows, also
+Like with most applications, with every new feature, the monolith grows, also
 increasing the computing resources required to run a single instance. In times
 of traffic peak, it is common for an application to scale its service allowing
 for response speed to remain within acceptable times. The bigger the deployment,
@@ -30,13 +30,13 @@ the frequency of new advances in the field, and it is only natural that a new
 approach to system architecture were developed.
 
 Although there is no formal definition for what a microservice is,
-\cite[Chapter~1]{newman2015building} states that ``Microservices are small,
-autonomous services that work together.'' Small is of course a subjective
-measure, but in fact there is no "theoretical" boundary on this quantity. It
-depends on the context of the application and the business, but considering the
-size of these microservices, it is only logical that each of the small services
-follows some kind of team structure allowing for parallel development, without
-any real coupling between the services. 
+``Microservices are small, autonomous services that work together''
+\cite[Chapter~1]{newman2015building}. Small is of course a subjective measure,
+but in fact there is no "theoretical" boundary on this quantity. It depends on
+the context of the application and the business, but considering the size of
+these microservices, it is only logical that each of the small services follows
+some kind of team structure allowing for parallel development, without any real
+coupling between the services. 
 
 Microservices are built around different ``business capabilities'' which are
 ``independently deployable by fully automated deployment machinery''
@@ -120,7 +120,7 @@ queue will be read by a single consumer.
 
 \subsection{Event-Driven (Publish/Subscribe)}
 
-Messaging system which allow a producer to send a message to a certain category,
+Messaging system which allows a producer to send a message to a certain category,
 which can be posteriorly retrieved by multiple consumers which are subscribed to
 the same category. This architecture not only decouples the services, it also
 allows many-to-many communication.
@@ -178,22 +178,22 @@ provided:
         in;
     \item \textbf{replication-factor} - The amount of replicas of each partition.
 \end{enumerate}
-The \lstinline{example-topic} presented in figure \ref{fig:kafka_cluster} would have been
+The \lstinline{example-topic} presented in Figure \ref{fig:kafka_cluster} would have been
 configured with \lstinline{topic=example-topic}, \lstinline{partitions=9} and
 \lstinline{replication-factor=2}.
 
 Although the first two parameters are self-explanatory, the third is one of the
 most important features to guarantee a reliable service to a producer. 
 
-Assuming the scenario of choosing the replication factor of 2, this means that
-for each partition in the created topic, there will be 2 partitions that
-represent the same log in different brokers. At any given time, there is only 1
-partition leader (broker), which leaves the other partition trying to keep up
-with the main log. When a replica is up-to-date with the leader, it becomes an
-in-sync replica (ISR). If a partition leader fails unexpectedly, the partitions it is
-leading have to be reassigned a different leader. For each partition, the new
-partition leader will be one of the brokers that contains an in-sync replica of
-the same partition.
+Assuming the scenario of choosing the replication factor of two, this means that
+for each partition in the created topic, there will be two partitions that
+represent the same log in different brokers. At any given time, there is only
+one partition leader (broker), which leaves the other partition trying to keep
+up with the main log. When a replica is up-to-date with the leader, it becomes
+an in-sync replica (ISR). If a partition leader fails unexpectedly, the
+partitions it is leading have to be reassigned a different leader. For each
+partition, the new partition leader will be one of the brokers that contains an
+in-sync replica of the same partition.
 
 \subsection{Producer}
 
@@ -215,11 +215,11 @@ to which the record is added.
 \end{figure}
 
 For a single partition, the log that belongs to the partition leader (shaded
-partitions in figure \ref{fig:kafka_cluster}) is where the messages are appended
+partitions in Figure \ref{fig:kafka_cluster}) is where the messages are appended
 to and read from. To guarantee a message is delivered safely to the cluster, a
 producer might want to wait for acknowledgement. This is one of the
 configurations that allows for reliability when adding a message to a topic
-\cite{KafkaProducer}. In figure \ref{fig:data_production_domain}, the partitions
+\cite{KafkaProducer}. In Figure \ref{fig:data_production_domain}, the partitions
 presented are only the leader partitions within the topic.
 
 There are 3 possible values for this configuration:
@@ -237,9 +237,8 @@ Additionally, when producing a message, if the order of a group of messages is
 important, Kafka provides a feature that allows messages to be consumed in the
 same order as they were produced. This is done by setting the key of a record to
 the same value, having a hash function run over the key, and the partition where
-the message goes to is consistently the same, while the number of partitions in
-the topic does not change. If the number of partitions changes, this is no
-longer the case.
+the message goes to is consistently the same. If the number of partitions
+changes, this is no longer the case.
 
 \subsection{Consumer Group and Consumer Clients}
 \label{sec:kafka_consumer_group}
@@ -268,13 +267,13 @@ group can have is therefore limited to the total amount of partitions in the
 topics the consumer group is subscribed to \cite{OreillyConsumer}. 
 
 In order to maintain a reliable consumption service, whenever a consumer
-successfully reads a message and commits its offset, kafka internally stores the
+successfully reads a message and commits its offset, Kafka internally stores the
 offset in a topic with the name \lstinline{__consumer_offset}
 \cite{KafkaConsumer}. This internal topic has another functionality which is
 related to the consumer group management. For a group to know when to rebalance
 it is important for the system to monitor the state of each consumer in the
 group, and this is performed by a group coordinator. To elect a group
-coordinator, the consumer group's id is selected as the message key, which is
+coordinator, the consumer group's ID is selected as the message key, which is
 then hashed into a partition of this internal topic. The broker that leads this
 partition becomes the group coordinator.
 
@@ -366,11 +365,13 @@ simply a VM or a physical computer that serves as a worker machine in
 Kubernetes'' \cite{CreateKubeCluster}.
 
 To change the Kubernetes cluster's state, the communication is performed via the
-\textbf{Kubernetes API} which is at the core of the control plane. This HTTP
-API, allows differing entities to communicate with the cluster and manage
-kubernetes objects \cite{KubernetesAPI}. Within this thesis' context, to manage
-a consumer group, the controller described in Section \ref{component:controller}
-leverages this API to manage deployment and volume resources.
+\textbf{Kubernetes API} (throughout this section, bold points out the
+definitions that are used in the remaining Chapters) which is at the core of the
+control plane. This HTTP API, allows differing entities to communicate with the
+cluster and manage kubernetes objects \cite{KubernetesAPI}. Within this thesis'
+context, to manage a consumer group, the controller described in Section
+\ref{component:controller} leverages this API to manage deployment and volume
+resources.
 
 As soon as the Kubernetes cluster is running, it is possible to deploy the
 containerized applications. This can be done using one of the many resource
@@ -417,7 +418,7 @@ every 30 seconds, although it can be modified by changing the value of
 
 The following equation determines the appropriate amount of pods (numPods), so
 as to have the average value for the metric (e.g., CPU or Memory) within a
-deployment below the defined target.
+deployment below the defined target (Target).
 \begin{equation}
     numPods = ceil\bigg(\frac
         {\sum_{p \in Deployment} metric_p}
