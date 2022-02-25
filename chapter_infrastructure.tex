@@ -97,7 +97,7 @@ messaging system that has the following features:
 \end{itemize}
 
 To enable decoupling between services, most messaging systems leverage the use
-of a broker, providing with the space and time decoupling, with the added
+of a broker, providing the space and time decoupling, with the added
 benefit of it also being asynchronous. After the broker acknowledges the
 reception of the message sent by a producer, the producer does not need to
 worry about its consumption allowing for it to go back to the tasks it has at
@@ -121,7 +121,7 @@ queue will be read by a single consumer.
 \subsection{Event-Driven (Publish/Subscribe)}
 
 Messaging system which allows a producer to send a message to a certain category,
-which can be posteriorly retrieved by multiple consumers which are subscribed to
+which can be later retrieved by multiple consumers which are subscribed to
 the same category. This architecture not only decouples the services, it also
 allows many-to-many communication.
 

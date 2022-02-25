@@ -32,15 +32,15 @@ current load.
 
 \section{Future Work}
 
-Given the multiple parts developed within this system, there is a lot of room
-for improvement. Most notably, due to the close relationship between the system
+Given the multiple parts developed within this system, additional improvements
+could be achieved. Most notably, due to the close relationship between the system
 and the Kubernetes cluster, the autoscaler could be wrapped as a Kubernetes
 Operator \cite{KuberenetesOperator} as is common with systems of this kind
 (\cite{Kubegres, PulumiOperator, KEDA}).
 
 \subsection{Monitor}
 
-To the best of my knowledge, for lack of a better metric being provided by the
+To the best of our knowledge, for lack of a better metric being provided by the
 Kafka cluster, the value that was used to track the write speed of each
 partition was the number of bytes in each partition. For this reason, a process
 (Section \ref{component:Monitor}) was used to evaluate the speed of each partition by

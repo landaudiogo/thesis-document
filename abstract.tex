@@ -1,18 +1,18 @@
 \chapter*{Abstract}
 %\addcontentsline{toc}{chapter}{Abstract}
 
-Message brokers provide with asynchronous communication between data producers
-and consumers in a distributed environment, being Kafka one of the several
-message broker alternatives. To scale data consumption rate, Kafka has Consumer
-Groups, which is an abstraction that allows to parallelize tasks between
-consumers in a group. This abstraction presents new concerns that depend on the
-broker's current load, which include: determining the number of consumers
-required; determining the partition assignment between the consumers in a group
-in order to guarantee that the consumption rate of each partition is not less
-than their respective production rate. Additionally considering the load varies
-with time, there is an increasing need to find autoscaling solutions to reduce
-operational cost, while guaranteeing that all data is being consumed within
-acceptable time after it has been produced.
+Message brokers provide asynchronous communication between data producers and
+consumers in a distributed environment, being Kafka one of the several message
+broker alternatives. To scale data consumption rate, Kafka has Consumer Groups,
+which is an abstraction that allows to parallelize tasks between consumers in a
+group. This abstraction presents new concerns that depend on the broker's
+current load, which include: determining the number of consumers required;
+determining the partition assignment between the consumers in a group in order
+to guarantee that the consumption rate of each partition is not less than their
+respective production rate. Additionally considering the load varies with time,
+there is an increasing need to find autoscaling solutions to reduce operational
+cost, while guaranteeing that all data is being consumed within acceptable time
+after it has been produced.
 
 As such, this problem is modeled as a new variation of the Bin Packing Problem
 where the bins are consumers of a consumer group, and the weights are the
